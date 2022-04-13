@@ -507,7 +507,8 @@ Rcpp::List R_hat(const int &H,
   }
   NumericMatrix rt2 = Pow(rt_sim,2);
   if(Model_type=="logN"){
-    rvt=Pow(rt2,para[1])*exp(para[0]+0.5*para[4]+0.5*pow(para[2],2)-para[3])/sqrt(1-2*para[3]);
+    //rvt=Pow(rt2,para[1])*exp(para[0]+0.5*para[4]+0.5*pow(para[2],2)-para[3])/sqrt(1-2*para[3]);
+    rvt=Pow(rt2,para[1])*exp(para[0]+0.5*pow(para[4],2)+(pow(para[2],2)/(2-4*para[3]))-para[3])/sqrt(1-2*para[3]);
   }
   
   Rcpp::List output =
@@ -560,12 +561,12 @@ Rcpp::List f_sim_logN(const int &H,
   Eigen::VectorXd sig2=sig.array().pow(varphi);
   NumericVector temp3_rv =  wrap((pi_0.transpose())*sig2);
   temp2_r[0] = temp3_r[0];
-  temp2_rv[0] = temp3_rv[0]*(exp(xi+0.5*shape+0.5*pow(delta1,2)-delta2)/sqrt(1-2*delta2));
+  temp2_rv[0] = temp3_rv[0]*(exp(xi+0.5*pow(shape,2)+pow(delta1,2)/(2-4*delta2)-delta2)/sqrt(1-2*delta2));
   for(int h=1;h<H;h++){
     temp3_r = wrap((pi_0.transpose() * temp)*sig);
     temp3_rv = wrap((pi_0.transpose() * temp)*sig2);
     temp2_r[h] = temp3_r[0];
-    temp2_rv[h] = temp3_rv[0]*(exp(xi+0.5*shape+0.5*pow(delta1,2)-delta2)/sqrt(1-2*delta2));
+    temp2_rv[h] = temp3_rv[0]*(exp(xi+0.5*pow(shape,2)+pow(delta1,2)/(2-4*delta2)-delta2)/sqrt(1-2*delta2));
     temp = temp * matP;
   }
   Rcpp::List output =

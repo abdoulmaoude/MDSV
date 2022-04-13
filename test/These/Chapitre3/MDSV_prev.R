@@ -17,24 +17,21 @@ end.date   <- as.Date("2019-12-31")
 # Mise en place
 #-------------------------------------------------------------------------------
 
-filenam <- paste("Forecast_MDSV_ALL_756_a_", start.date, "_",end.date, sep="")
+filenam <- paste("Forecast_MDSV_RandJ_Good_ALL_756_", start.date, "_",end.date, sep="")
 
-# model_extern<-rbind(expand.grid(index=c("sp500"), K=c(2:1024), N=c(1), 
-#                    ModelType=c(2), LEVIER=c(FALSE),n.ahead=c(100),forecast.length=c(756),refit.every=c(63),
-#                    refit.window=c("recursive"),calculate.VaR=c(TRUE), rseed=1050),
-#                    expand.grid(index=c("sp500"), K=c(2), N=c(2:10),
-#                                ModelType=c(2), LEVIER=c(FALSE),n.ahead=c(100),forecast.length=c(756),refit.every=c(63),
-#                                refit.window=c("recursive"),calculate.VaR=c(TRUE), rseed=1050))
+# model_extern<-rbind(expand.grid(index=c("sp500"), K=c(2), N=c(3),
+#                                 ModelType=c(0,2), LEVIER=c(FALSE),n.ahead=c(100),forecast.length=c(756),refit.every=c(63),
+#                                 refit.window=c("recursive"),calculate.VaR=c(TRUE), rseed=1050))
 
-model_extern<-rbind(expand.grid(index=index_set, K=c(2), N=c(10),
-                          ModelType=c(0,2), LEVIER=c(FALSE,TRUE),n.ahead=c(100),forecast.length=c(756),refit.every=c(63),
+model_extern<-rbind(expand.grid(index=index_set, K=c(2), N=c(10), LEVIER=c(FALSE,TRUE), ModelType=c(0,2),
+                          n.ahead=c(100),forecast.length=c(756),refit.every=c(63),
                           refit.window=c("recursive"),calculate.VaR=c(TRUE), rseed=1050),
-                    expand.grid(index=index_set, K=c(10), N=c(3),
-                                ModelType=c(0,2), LEVIER=c(FALSE,TRUE),n.ahead=c(100),forecast.length=c(756),refit.every=c(63),
-                                refit.window=c("recursive"),calculate.VaR=c(TRUE), rseed=1050),
+                    expand.grid(index=index_set, K=c(10), N=c(3), LEVIER=c(FALSE,TRUE), ModelType=c(0,2),
+                          n.ahead=c(100),forecast.length=c(756),refit.every=c(63),
+                          refit.window=c("recursive"),calculate.VaR=c(TRUE), rseed=1050),
                     expand.grid(index=index_set, K=c(3), N=c(6), LEVIER=c(FALSE,TRUE), ModelType=c(0,2),
-                                n.ahead=c(100),forecast.length=c(756),refit.every=c(63),
-                                refit.window=c("recursive"),calculate.VaR=c(TRUE), rseed=1050))
+                          n.ahead=c(100),forecast.length=c(756),refit.every=c(63),
+                          refit.window=c("recursive"),calculate.VaR=c(TRUE), rseed=1050))
 
 model_extern$nstate <- (model_extern$K)^(model_extern$N)
 
@@ -53,6 +50,8 @@ model_add <- matrix(0, nrow=nrow(model_extern), ncol=length(vars))
 colnames(model_add) <- vars
 model_extern <- cbind(model_extern, model_add)
 
+model_extern<-model_extern[-c(4,7,23,26,39,40,11,26,41,42),]
+
 ctrl <- list(TOL=1e-15, trace=0)
 
 n.ahead         <- 100
@@ -62,8 +61,8 @@ refit.window    <- "recursive"
 VaR.alpha       <- c(0.01,0.05,0.10)
 rseed           <- 1050
 
-for(i in 19:24){
-  #13-18 , 19-24
+for(i in 1:nrow(model_extern)){
+  #8, 9, 18, 21 || (jaune) 2, 3, 7, 11, 12, 15, 25, 35, 37 
 #for(i in c(1,237,473,709,945,1181)){
   start_time      <- Sys.time()
   index           <- as.character(model_extern[i,"index"])
@@ -76,11 +75,35 @@ for(i in 19:24){
   K               <- as.numeric(model_extern[i,"K"])
   calculate.VaR   <- as.logical(model_extern[i,"calculate.VaR"])
 
-  cluster         <- makeCluster(7)
+  # tmp<-read.csv("All_estimations.csv")
+  # if(ModelType==0) {
+  #   modeltype <- "log-return"
+  # }else{
+  #   modeltype <- "Joint"
+  # }
+  # 
+  # ij<-(tmp$index==index) & (tmp$ModelType == modeltype) & (tmp$LEVIER == LEVIER) & (tmp$N == N) & (tmp$K == K)
+  # 
+  # vars<-c("omega","a","b","sigma","v0")
+  # if(ModelType==2) {
+  #   vars <- c(vars,"xi","varphi","delta1","delta2","shape")
+  # }
+  # if(LEVIER) {
+  #   vars <- c(vars,"l","theta")
+  # }
+  # 
+  # start.pars<-unlist(tmp[ij,vars])
+  
+  start.pars <- c(0.25,0.87, 2.77, sqrt(var(donne[,"r"])),0.33)
+  if(ModelType==1) start.pars <- c(start.pars,2.10)
+  if(ModelType==2) start.pars <- c(start.pars,-1.5,	0.72,	-0.09,	0.04,	2.10)
+  if(LEVIER)       start.pars <- c(start.pars,1.5,0.87568)
+  
+  cluster         <- makeCluster(6)
   out<-MDSVroll(N=N, K=K, data=donne, ModelType=ModelType, LEVIER=LEVIER, n.ahead = n.ahead, 
                 forecast.length = forecast.length, refit.every = refit.every, refit.window = refit.window, 
                 window.size=NULL,calculate.VaR = calculate.VaR, VaR.alpha = VaR.alpha, cluster = cluster, 
-                rseed = rseed)
+                rseed = rseed,start.pars=start.pars)
   parallel::stopCluster(cluster)
   
   out<-print(out, VaR.test=calculate.VaR, Loss.horizon = c(1,5,10,25,50,75,100), Loss.window = 756)
@@ -140,6 +163,6 @@ for(i in 19:24){
     write.csv(model_extern, paste0(filenam,".csv"), row.names=FALSE)
   }
   
-  print(paste("===",round(100*i/nrow(model_extern),2) , "%" ,"===="))
+  # print(paste("===",round(100*i/nrow(model_extern),2) , "%" ,"===="))
 }
 

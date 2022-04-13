@@ -7,6 +7,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // workNat
 Eigen::VectorXd workNat(const Eigen::Map<Eigen::VectorXd>& para_tilde, const bool& LEVIER, const int& Model_type);
 RcppExport SEXP _MDSV_workNat(SEXP para_tildeSEXP, SEXP LEVIERSEXP, SEXP Model_typeSEXP) {
@@ -69,6 +74,20 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int& >::type K(KSEXP);
     Rcpp::traits::input_parameter< const int& >::type N(NSEXP);
     rcpp_result_gen = Rcpp::wrap(P(para, K, N));
+    return rcpp_result_gen;
+END_RCPP
+}
+// levierVolatility1
+Rcpp::List levierVolatility1(const NumericVector& ech, const Eigen::VectorXd& para, const int& Nl, const int& Model_type);
+RcppExport SEXP _MDSV_levierVolatility1(SEXP echSEXP, SEXP paraSEXP, SEXP NlSEXP, SEXP Model_typeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type ech(echSEXP);
+    Rcpp::traits::input_parameter< const Eigen::VectorXd& >::type para(paraSEXP);
+    Rcpp::traits::input_parameter< const int& >::type Nl(NlSEXP);
+    Rcpp::traits::input_parameter< const int& >::type Model_type(Model_typeSEXP);
+    rcpp_result_gen = Rcpp::wrap(levierVolatility1(ech, para, Nl, Model_type));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -183,6 +202,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_MDSV_volatilityVector", (DL_FUNC) &_MDSV_volatilityVector, 3},
     {"_MDSV_probapi", (DL_FUNC) &_MDSV_probapi, 3},
     {"_MDSV_P", (DL_FUNC) &_MDSV_P, 3},
+    {"_MDSV_levierVolatility1", (DL_FUNC) &_MDSV_levierVolatility1, 4},
     {"_MDSV_levierVolatility", (DL_FUNC) &_MDSV_levierVolatility, 4},
     {"_MDSV_logLik", (DL_FUNC) &_MDSV_logLik, 7},
     {"_MDSV_logLik2", (DL_FUNC) &_MDSV_logLik2, 9},

@@ -4,6 +4,7 @@ path<-"C:/Users/DellPC/Dropbox/Abdoul/These/Article1/Code/MDSV/Code_These/MDSV_p
 setwd(path)
 library(MDSV)
 if(!require(Rsolnp)){install.packages("Rsolnp")}; library(Rsolnp)
+if(!require(actuar)){install.packages("actuar")}; library(actuar)
 if(!require(KScorrect)){install.packages("KScorrect")}; library(KScorrect)
 if(!require(mhsmm)){install.packages("mhsmm")}; library(mhsmm)
 if(!require(Rcpp)){install.packages("Rcpp")}; library(Rcpp)
@@ -271,7 +272,7 @@ for(i in 1:nrow(model_extern)){
     for(b in 1:nrow(ech)) h_t<-exp(w+beta*log(h_t)+tau1l*(ech[b,"r"]/sqrt(h_t))+tau2l*((ech[b,"r"]/sqrt(h_t))^2-1)+gamma*(log(ech[b,"rv"])-xi-phi*log(h_t)-tau_1*(ech[b,"r"]/sqrt(h_t))-tau_2*((ech[b,"r"]/sqrt(h_t))^2-1)))
     
     if(calculate.VaR) for(iter in 1:length(VaR.alpha)){
-      model[t+1,paste0('VaR',100*(1-VaR.alpha[iter]))] <- qnorm(VaR.alpha[iter],0,h_t)
+      model[t+1,paste0('VaR',100*(1-VaR.alpha[iter]))] <- qnorm(VaR.alpha[iter],0,sqrt(h_t))
     }
     
     h_t<-h_t*matrix(rep(1,n),n,1)
@@ -410,7 +411,7 @@ write.csv(model_extern, "Forecast_RealEGARCH_756.csv", row.names=FALSE)
 #-------------------------------------------------------------------------------
 
 para_init<-function(LEVIER,K){
-  para<-c(5.01)
+  para<-c(0,0.80,0.12,-0.05,5.01)
   if(K==2){
     Vol<-c(0.02,3.5)
     P<-matrix(c(0.99,0.01,0.01,0.99),K,K)
@@ -428,10 +429,10 @@ para_init<-function(LEVIER,K){
   return(list(para=para,P=P,Vol=Vol))
 }
 
-model<-expand.grid(index=index_set, start.date=as.Date("2000-01-01"), end.date=as.Date("2019-12-31"), length=0,
-                   K=c(2,4), LEVIER=c(FALSE,TRUE))
+model<-expand.grid(index=index_set[1], start.date=as.Date("2000-01-01"), end.date=as.Date("2019-12-31"), length=0,
+                   K=c(4), LEVIER=c(TRUE))
 
-vars<-c('loglikm','loglik', 'AIC', 'BIC', paste0("param",1:19),"conv","time")
+vars<-c('loglikm','loglik', 'AIC', 'BIC', paste0("param",1:23),"conv","time")
 
 model_add <- matrix(0, nrow=nrow(model), ncol=length(vars))
 colnames(model_add) <- vars
@@ -441,7 +442,7 @@ filename <- paste("MSRV","_all_index_",start.date,"_",end.date, sep="")
 sourceCpp('benchmarks/RealizedMS.cpp')
 
 fn<-function(para_tilde,ech,K=K,LEVIER=LEVIER)
-  logLik(ech=ech,para_tilde = para_tilde,K=K,LEVIER=LEVIER, Model_type = "InvG")
+  logLik(ech=ech,para_tilde = para_tilde,K=K,LEVIER=LEVIER, Model_type = "logN")
 
 for(i in 1:nrow(model)){
   start_time <- Sys.time()
@@ -458,15 +459,15 @@ for(i in 1:nrow(model)){
   K                     <- as.numeric(model[i,"K"])
   
   para<-para_init(LEVIER,K)
-  para_tilde<-natWork(para=para$para,Vol=para$Vol,P=para$P,K=K,LEVIER,"InvG")
+  para_tilde<-natWork(para=para$para,Vol=para$Vol,P=para$P,K=K,LEVIER,"logN")
   
-  LB  = rep(-10, 1+K+K*(K-1)+2*LEVIER)#, -10, -10)
-  UB  = rep(10, 1+K+K*(K-1)+2*LEVIER)#, 10, 10)
+  LB  = rep(-10, 5+K+K*(K-1)+2*LEVIER)#, -10, -10)
+  UB  = rep(10, 5+K+K*(K-1)+2*LEVIER)#, 10, 10)
   
   oldw <- getOption("warn")
   options(warn = -1)
   opt<-try(gosolnp(pars=para_tilde,fun=fn,ech=donne,LEVIER=LEVIER,K=K,control=ctrl,
-                   LB=LB,UB=UB,n.restarts=10,n.sim=200,cluster=NULL),silent=T)
+                   LB=LB,UB=UB,n.restarts=10,n.sim=5000,cluster=NULL),silent=T)
   options(warn = oldw)
   
   if(is(opt,"try-error")) {
@@ -475,8 +476,8 @@ for(i in 1:nrow(model)){
     next
   }
   
-  model[i,colnames(model) %in% paste0("param",1:(1+K+K*(K-1)+2*LEVIER))] <- round(opt$pars,5)
-  l<-logLik2(ech=donne,para_tilde=opt$pars,LEVIER=LEVIER,K=K,Model_type="InvG",t=nrow(donne),r=0)
+  model[i,colnames(model) %in% paste0("param",1:(5+K+K*(K-1)+2*LEVIER))] <- round(opt$pars,5)
+  l<-logLik2(ech=donne,para_tilde=opt$pars,LEVIER=LEVIER,K=K,Model_type="logN",t=nrow(donne),r=0)
   model[i,'conv']   <- "Convergence."
   model[i,'loglik'] <- -as.numeric(opt$values[length(opt$values)])
   model[i,"loglikm"]<- l$Marg_loglik
@@ -489,10 +490,10 @@ for(i in 1:nrow(model)){
 }
 
 write.csv(model, "Estim_ALLRealMSRV.csv", row.names=FALSE)
-
+X<-matrix(unlist(model[,11:33]),nrow=nrow(model))
 
 #-------------------------------------------------------------------------------
-# Real-EGARCH : PREVISION
+# MS-RV : PREVISION
 #-------------------------------------------------------------------------------
 
 g<-function(vector){
@@ -530,7 +531,7 @@ para_name<-function(params,K,LEVIER){
 
 ctrl <- list(TOL=1e-15, trace=0)
 
-model_extern<-expand.grid(index=index_set, K=c(2,4), LEVIER=c(FALSE,TRUE), n.ahead=c(100),
+model_extern<-expand.grid(index=index_set[1], K=c(4), LEVIER=c(TRUE), n.ahead=c(100),
                           forecast.length=c(756), refit.every=c(63), refit.window=c("recursive"),
                           calculate.VaR=c(TRUE), rseed=1050)
 
@@ -556,6 +557,9 @@ colnames(model_add) <- vars
 model_extern <- cbind(model_extern, model_add)
 
 R_var <- rep(0,length(Loss.horizon))
+
+library(readr)
+X <- read_csv("Estim_ALLRealMSRV.csv")
 
 for(i in 1:nrow(model_extern)){
   start_time <- Sys.time()
@@ -594,31 +598,60 @@ for(i in 1:nrow(model_extern)){
   
   
   para<-para_init(LEVIER,K)
-  para_tilde<-natWork(para=para$para,Vol=para$Vol,P=para$P,K=K,LEVIER,"InvG")
+  para_tilde<-natWork(para=para$para,Vol=para$Vol,P=para$P,K=K,LEVIER,"logN")
+  # para_tilde <- X[i,]
+  X <- as.numeric(X[i,11:33])
+  # X <- c(-0.42403,	0.97708, -0.10733,	0.1151,	-1.51787,	-0.44547,
+  #        -1.76274,	-1.4538,	0.30502,	-2.32556,	-0.70217,	3.53387,
+  #        -9.41913,	-0.10517,	-10,	3.02247,	-10,	3.11789,	-9.62701,
+  #        0.104503, 0.0225187, 3.343334, 0.238355)
   
-  LB  = rep(-10, 1+K+K*(K-1)+2*LEVIER)#, -10, -10)
-  UB  = rep(10, 1+K+K*(K-1)+2*LEVIER)#, 10, 10)
+  X <- c(0.92239,1.66738,-0.90161,-2.0886,0.26459,-1.51787,	-0.44547,
+         2.15614, -10,-10,-3.62345,3.15387,0.00935,-9.59061, 4.50915,
+         6.46873,-3.63302,-2.94299,-10, 3.343334, 0.238355, 0.104503, 0.0225187)
+  
+  LB  = rep(-10, 5+K+K*(K-1)+2*LEVIER)#, -10, -10)
+  UB  = rep(10, 5+K+K*(K-1)+2*LEVIER)#, 10, 10)
   opt             <- NULL
   update_date     <- seq(0,forecast.length,by=refit.every)
   strt            <- 1
   
   for(t in 0:(forecast.length-1)){
+  # for(t in 441:(441+62)){
     ech    <- donne[strt:(length(nam_)-forecast.length+t),]
     
     if(t %in% update_date){
+      
       if((!is.null(opt)) & !(is(opt,"try-error"))) para_tilde<-opt$pars
       oldw <- getOption("warn")
       options(warn = -1)
-      opt<-try(gosolnp(pars=para_tilde,fun=fn,ech=ech,LEVIER=LEVIER,K=K,control=ctrl,
-                       LB=LB,UB=UB,n.restarts=2,n.sim=200,cluster=NULL),silent=T)
+      opt1 <- try(gosolnp(pars=para_tilde,fun=fn,ech=ech,LEVIER=LEVIER,K=K,control=ctrl,
+                                LB=LB,UB=UB,n.restarts=10,n.sim=2000,cluster=NULL),silent=T)
+      # opt1 <- NULL
+      opt2 <- try(solnp(pars=X,fun=fn,ech=ech,LEVIER=LEVIER,K=K,control=ctrl),silent=T)
+      # opt1 <- try(solnp(pars=para_tilde+runif(1,-10,10),fun=fn,ech=ech,LEVIER=LEVIER,K=K,control=ctrl),silent=T)
+
+      if((!is.null(opt1)) & !(is(opt1,"try-error"))){
+        if((!is.null(opt2)) & !(is(opt2,"try-error"))){
+          if((-as.numeric(opt1$values[length(opt1$values)])) < (-as.numeric(opt2$values[length(opt2$values)]))){
+            opt<-opt2
+          }else{
+            opt<-opt1
+          }
+        }else{opt<-opt1}
+      }else{
+        if((!is.null(opt2)) & !(is(opt2,"try-error"))) opt<-opt2
+      }
+        
       options(warn = oldw)
       
       if(refit.window == "moving") strt <- strt + refit.every
       
     }
     
+    
     model[t+1,colnames(model) %in% paste0("param",1:(1+K+K*(K-1)+2*LEVIER))] <- round(opt$pars,5)
-    l<-logLik2(ech=ech,para_tilde=opt$pars,LEVIER=LEVIER,K=K,Model_type="InvG",t=nrow(ech),
+    l<-logLik2(ech=ech,para_tilde=opt$pars,LEVIER=LEVIER,K=K,Model_type="logN",t=nrow(ech),
                r=donne[(length(nam_)-forecast.length+t+1),"r"])
   
     
@@ -631,12 +664,12 @@ for(i in 1:nrow(model_extern)){
     n <- 10000 #number of simulations
     H <- max(Loss.horizon)    #nb of years simulated
     
-    para<-workNat(opt$pars,LEVIER,K,"InvG")
+    para<-workNat(opt$pars,LEVIER,K,"logN")
     
     sig<- para$Vol
     pi_0 <- l$w_hat
     if(LEVIER){
-      Levier<-levierVolatility(ech[(length(ech[,"r"])-100):(length(ech[,"r"])),"r"],Nl=70,para=para$para,Model_type="InvG")$`levier`
+      Levier<-levierVolatility(ech[(length(ech[,"r"])-500):(length(ech[,"r"])),"r"],Nl=70,para=para$para,Model_type="logN")$`levier`
       sig<-sig*Levier
     }
     
@@ -653,20 +686,21 @@ for(i in 1:nrow(model_extern)){
     matP<-para$P
     sig<-para$Vol
     para<-para$para
+    #if(para[7]>0.90)  para <- c(para[-c(7)], 0.8838735)
     
     if(LEVIER){
       MC_sim <- t(matrix(sim.mc(pi_0, matP, rep(H, n)),H,n,byrow=FALSE)) #simulation of Markov chain
       z_t<-matrix(rnorm(n*H),nrow=n,ncol=H)
-      n_t<-matrix(rinvgamma(n*H,shape = para[1]+1,scale = para[1]),nrow=n,ncol=H)
+      n_t<-matrix(rinvgamma(n*H,shape = para[5]+1,scale = para[5]),nrow=n,ncol=H)
       
-      Levier<-rep(1,n)%*%t(levierVolatility(ech[(length(ech[,"r"])-100):(length(ech[,"r"])),"r"],Nl=70,para,"InvG")$`Levier`)
-      sim<-R_hat(H,ech[(length(ech[,"r"])-100):(length(ech[,"r"])),"r"],MC_sim,z_t,n_t=n_t,Levier,sig,para,K,"InvG",Nl=70)
+      Levier<-rep(1,n)%*%t(levierVolatility(ech[(length(ech[,"r"])-500):(length(ech[,"r"])),"r"],Nl=70,para,"logN")$`Levier`)
+      sim<-R_hat(H,ech[(length(ech[,"r"])-500):(length(ech[,"r"])),"r"],MC_sim,z_t,n_t=n_t,Levier,sig,para,K,"logN",Nl=70)
       rt2_sim<-sim$`rt2`
       rvt_sim<-sim$`rvt`
       rt2_sim <- rt2_sim[,(ncol(rt2_sim)-H+1):ncol(rt2_sim)]
       rvt_sim <- rvt_sim[,(ncol(rvt_sim)-H+1):ncol(rvt_sim)]
     }else {
-      sim<-f_sim_InvG(H,sig,pi_0,matP)
+      sim<-f_sim_logN(H,sig,pi_0,matP,varphi=para[2],xi=para[1],shape=para[5],delta1=para[3],delta2=para[4])
       rt2_sim<-sim$`rt2`
       rvt_sim<-sim$`rvt`
     }
@@ -704,6 +738,8 @@ for(i in 1:nrow(model_extern)){
     for(k in 1:length(Loss.horizon)) R_var[k] <- sum(ech[Loss.horizon[k]])
     names(R_var) <- paste0("RV_tru_m",Loss.horizon)
     model[(t+1),colnames(model) %in% names(R_var)]<-R_var
+    
+    print(paste0("========== i = ",i, " et pourcentage = ",100*(t+1)/756," % ==============="))
     
   }
   
@@ -777,14 +813,10 @@ for(i in 1:nrow(model_extern)){
   
   model_extern[i,"time"] <- difftime(Sys.time(), start_time,units = "secs")[[1]]
   
+  #model_extern[,c("RMSEc_RV 1","RMSEc_RV 5","RMSEc_RV 25","RMSEc_RV 100")]
+  
   write.csv(model, paste(filename,"csv",sep="."), row.names=FALSE)
 }
 
 write.csv(model_extern, "Forecast_RealMSRV_756.csv", row.names=FALSE)
-
-
-
-
-
-
 

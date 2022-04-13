@@ -112,7 +112,7 @@ Eigen::MatrixXd P(const Eigen::VectorXd &para, const int &K,const int &N){
 }
 
 // [[Rcpp::export]]
-Rcpp::List levierVolatility(const NumericVector &ech, const Eigen::VectorXd &para, const int &Nl=70,
+Rcpp::List levierVolatility1(const NumericVector &ech, const Eigen::VectorXd &para, const int &Nl=70,
                             const int &Model_type=0){
   int j=0; if(Model_type==1)  j=1; if(Model_type==2)  j=5;
   int t=ech.size();
@@ -134,6 +134,35 @@ Rcpp::List levierVolatility(const NumericVector &ech, const Eigen::VectorXd &par
     );
   return output;
 } 
+
+// [[Rcpp::export]]
+Rcpp::List levierVolatility(const NumericVector &ech, const Eigen::VectorXd &para, const int &Nl=70,
+                            const int &Model_type=0){
+  int j=0; if(Model_type==1)  j=1; if(Model_type==2)  j=5;
+  int t=ech.size();
+  NumericVector Levier=wrap(Eigen::VectorXd::Ones(t));
+  NumericVector li(Nl);
+  double levier;
+  for(int i=0;i<Nl;i++) li[i]=para[5+j]*pow(para[6+j],i);
+  for(int t=0;t<Nl;t++){
+    levier=1;
+    for(int i=0; i<t;i++) levier=levier*(1+(li[i]*(-(ech[t-i-1]))*(ech[t-i-1]<0)/(sqrt(Levier[t-i-1]))));
+    Levier[t]=levier;
+  }
+  for(int t=Nl;t<ech.size();t++){
+    levier=1;
+    for(int i=0; i<Nl;i++) levier=levier*(1+(li[i]*(-(ech[t-i-1]))*(ech[t-i-1]<0)/(sqrt(Levier[t-i-1]))));
+    Levier[t]=levier;
+  }
+  levier=1;
+  for(int i=0; i<Nl;i++) levier=levier*(1+(li[i]*(-(ech[t-i-1]))*(ech[t-i-1]<0)/(sqrt(Levier[t-i-1]))));
+  Rcpp::List output =
+    Rcpp::List::create(
+      Rcpp::Named("Levier") = Levier,
+      Rcpp::Named("levier") = levier
+    );
+  return output;
+}
 
 Eigen::VectorXd r_dens(const double &x, const Eigen::VectorXd &sd){
   int n = sd.size();
