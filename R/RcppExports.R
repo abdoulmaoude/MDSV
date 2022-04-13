@@ -21,6 +21,10 @@ P <- function(para, K, N) {
     .Call(`_MDSV_P`, para, K, N)
 }
 
+levierVolatility1 <- function(ech, para, Nl = 70L, Model_type = 0L) {
+    .Call(`_MDSV_levierVolatility1`, ech, para, Nl, Model_type)
+}
+
 levierVolatility <- function(ech, para, Nl = 70L, Model_type = 0L) {
     .Call(`_MDSV_levierVolatility`, ech, para, Nl, Model_type)
 }

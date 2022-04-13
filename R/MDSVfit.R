@@ -238,7 +238,7 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
         names(para) <- vars
         
         if((para["omega"]>1) || (para["omega"]<0) || (para["a"]>1) || (para["a"]<0) || (para["b"]<=1) ||
-           (para["sigma"]<=0) || (para["v0"]>1) || (para[v0]<0)) {
+           (para["sigma"]<=0) || (para["v0"]>1) || (para["v0"]<0)) {
           print("MDSVfit() WARNING: Incorrect start.pars! set to default.")
           para <- NULL
         }else if(((ModelType==1) & (para["shape"]<=0)) || ((ModelType==2) & (para[10]<=0))){
