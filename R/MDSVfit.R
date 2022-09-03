@@ -6,7 +6,7 @@
 #' @param ModelType An integer designing the type of model to be fit. \eqn{0} for univariate log-returns, \eqn{1} for univariate realized variances and \eqn{2} for joint log-return and realized variances.
 #' @param LEVIER if \code{TRUE}, estime the MDSV model with leverage.
 #' @param start.pars List of staring parameters for the optimization routine. These are not usually required unless the optimization has problems converging.
-#' @param ... Further options for the \code{\link{solnp}} solver of the \pkg{Rsolnp} package.
+#' @param ... Further options for the \code{\link{solnp}} solver of the \pkg{Rsolnp} package or for fixing some parameters (see @details ).
 #' 
 #' @return A list consisting of:
 #' \itemize{
@@ -37,6 +37,9 @@
 #' The \link[base]{class} of the output of this function is \code{\link{MDSVfit}}. This class has a \link[base]{summary}, 
 #' \link[base]{print} and \link[base]{plot} \link[utils]{methods} to summarize, print and plot the results. See 
 #' \code{\link{summary.MDSVfit}}, \code{\link{print.MDSVfit}} and \code{\link{plot.MDSVfit}} for more details.
+#' To fixe some parameter in the optimization, you can use the deux optionnal parameters :
+#' @param fixed.pars A vector of the position of the parameters of the model to be fixed
+#' @param fixed.values A vector containing the value of parameters of the model to be fixed. Must have the same length as fixed.pars
 #' 
 #' @references  
 #' Augustyniak, M., Bauwens, L., & Dufays, A. (2019). A new approach to volatility modeling: the factorial hidden Markov volatility model. 
@@ -79,7 +82,7 @@
 #' @export
 #' @import Rcpp
 #' @importFrom Rsolnp solnp gosolnp
-MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
+MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){ 
   
   if ( (!is.numeric(N)) || (!is.numeric(K)) ) {
     stop("MDSVfit() ERROR: input N and K must be numeric!")
@@ -128,7 +131,7 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
   if(!("TOL" %in% names(ctrls))){
     ctrl<-c(ctrl, list(TOL=1e-15))
   }else{
-    if(!is.numeric(ctrls$TOL)){
+    if(!is.numeric(ctrls$TOL)){ 
       ctrl<-c(ctrl, list(TOL=1e-15))
     }else{
       ctrl<-c(ctrl, list(TOL=ctrls$TOL))
@@ -153,13 +156,13 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
     UB<-c(UB,10)
   }else if(ModelType==2) {
     vars <- c(vars,"xi","varphi","delta1","delta2","shape")
-    LB<-c(LB,rep(-2,4),-10)
-    UB<-c(UB,rep(2,4),10)
+    LB<-c(LB,rep(-2.5,4),-10.5)
+    UB<-c(UB,rep(2.5,4),10.5)
   }
   if(LEVIER) {
     vars <- c(vars,"l","theta")
-    LB<-c(LB,-10,-10)
-    UB<-c(UB,10,10)
+    LB<-c(LB,-10.5,-10.5)
+    UB<-c(UB,10.5,10.5)
   }
   
   if("LB" %in% names(ctrls)){
@@ -216,6 +219,51 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
     }
   }else{
     cluster<-NULL
+  }
+  
+  if("fixed.pars" %in% names(ctrls)){
+    fixed.pars <- ctrls$fixed.pars
+    if (!is.numeric(fixed.pars)) {
+      stop("MDSVfit() ERROR: input fixed.pars must be numeric and containt the position of the fixed parameters!")
+    }else if(!(sum(fixed.pars%%1)==0)){
+      stop("MDSVfit() ERROR: input fixed.pars must be integers!")
+    }else if(length(fixed.pars) > length(vars)){
+      stop(paste("MDSVfit() ERROR: input fixed.pars must have a length less than ", length(vars), " !"))
+    }
+    if(!("fixed.values" %in% names(ctrls))){
+      stop(paste("MDSVfit() ERROR: input fixed.values is missing!"))
+    }else{
+      fixed.values <- ctrls$fixed.values
+      if((length(fixed.values) == 1)){
+        fixed.values <- rep(fixed.values, length(fixed.pars) )
+      }else if(!(length(fixed.pars) == length(fixed.values))){
+        stop(paste("MDSVfit() ERROR: input fixed.values must have a length of ", length(fixed.pars), " !"))
+      }
+    } 
+  }else{
+    fixed.pars <- NULL
+    fixed.values <- NULL
+  }
+  
+  if(!is.null(fixed.pars)){
+      names(fixed.values) <- vars[fixed.pars]
+      if(("omega" %in% names(fixed.values)) & ((fixed.values["omega"]>1) || (fixed.values["omega"]<0))){
+        stop("MDSVfit() ERROR: Incorrect fixed.values! omega must be between 0 and 1.")
+      }else if(("a" %in% names(fixed.values)) & ((fixed.values["a"]>1) || (fixed.values["a"]<0))){
+        stop("MDSVfit() ERROR: Incorrect fixed.values! a must be between 0 and 1.")
+      }else if(("b" %in% names(fixed.values)) & (fixed.values["b"]<=1)){
+        stop("MDSVfit() ERROR: Incorrect fixed.values! b must be greater than 1.")
+      }else if(("v0" %in% names(fixed.values)) & ((fixed.values["v0"]>1) || (fixed.values["v0"]<0))){
+        stop("MDSVfit() ERROR: Incorrect fixed.values! v0 must be between 0 and 1.")
+      }else if(("sigma" %in% names(fixed.values)) & (fixed.values["sigma"]<=0)){
+        stop("MDSVfit() ERROR: Incorrect fixed.values! sigma must be positive.")
+      }else if(("shape" %in% names(fixed.values)) & (fixed.values["shape"]<=0)){
+        stop("MDSVfit() ERROR: Incorrect fixed.values! shape must be positive.")
+      }else if(("l" %in% names(fixed.values)) & (fixed.values["l"]<=0)){
+        stop("MDSVfit() ERROR: Incorrect fixed.values! l must be positive.")
+      }else if(("theta" %in% names(fixed.values)) & ((fixed.values["theta"]>1) || (fixed.values["theta"]<0))){
+        stop("MDSVfit() ERROR: Incorrect fixed.values! theta must be between 0 and 1.")
+      }
   }
   
   tmp <- c(0.52,0.85, 2.77,sqrt(var(data[,1])),0.72)
@@ -276,18 +324,33 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
   options(warn = -1)
   if(!is.null(para)){
     para_tilde <- natWork(para=para,LEVIER=LEVIER,Model_type=ModelType)
-    opt<-try(solnp(pars=para_tilde,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,control=ctrl),silent=T)
+    if(is.null(fixed.pars)){
+      opt<-try(solnp(pars=para_tilde,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,control=ctrl),silent=T)
+    }else{
+      opt<-try(solnp(pars=para_tilde,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,fixed_pars=fixed.pars,fixed_values=fixed.values,control=ctrl),silent=T)
+    }
   }else{
-    opt<-try(gosolnp(pars=NULL,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,control=ctrl,
-                     LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim,cluster=cluster),silent=T)
+    if(is.null(fixed.pars)){
+      opt<-try(gosolnp(pars=NULL,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,control=ctrl,
+                       LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim,cluster=cluster),silent=T)
+    }else{
+      opt<-try(gosolnp(pars=NULL,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,
+                       fixed.pars=fixed.pars, fixed.values=fixed.values,control=ctrl,
+                       LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim,cluster=cluster),silent=T)
+    }
   }
   options(warn = oldw)
   
   if(class(opt) =='try-error'){
     stop("MDSVfit() ERROR: Fail to converge!")
   }else{
-    params<-workNat(opt$pars, LEVIER=LEVIER, Model_type=ModelType)
+    if(is.null(fixed.pars)){
+      params<-workNat(opt$pars, LEVIER=LEVIER, Model_type=ModelType)
+    }else{
+      params<-workNat(opt$pars, LEVIER=LEVIER, Model_type=ModelType,fixed_pars = fixed.pars, fixed_values = fixed.values)
+    }
     names(params)<-vars
+    convergence <- opt$convergence
   } 
   
   if((round(params["omega"],5)==0) || (round(params["omega"],5)==1) || (round(params["a"],5)==0) ||
@@ -296,6 +359,7 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
            ( LEVIER & ((round(params["theta"],5)==0) || (round(params["theta"],5)==1))) ||
            ( LEVIER & (round(params["l"],5)==0)) ){
     print("MDSVfit() WARNING: Fail to converge! Return the best results found.")
+    convergence <- 1
   }
   
   ### Results
@@ -309,7 +373,7 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
             LEVIER        = LEVIER, 
             N             = N, 
             K             = K, 
-            convergence   = opt$convergence,
+            convergence   = convergence,
             estimates     = params, 
             LogLikelihood = -as.numeric(opt$values[length(opt$values)]),
             AIC           = -as.numeric(opt$values[length(opt$values)])-length(params), 

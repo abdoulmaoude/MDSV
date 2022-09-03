@@ -6,6 +6,8 @@
 #' @param para A vector of parameters use for the MDSV filtering on \code{data}. For more informations see Details. 
 #' @param ModelType An integer designing the type of model to be fit. \eqn{0} for univariate log-returns, \eqn{1} for univariate realized variances and \eqn{2} for joint log-return and realized variances.
 #' @param LEVIER if \code{TRUE}, estime the MDSV model with leverage.
+#' @param calculate.VaR Whether to calculate forecast Value at Risk during the estimation.
+#' @param VaR.alpha The Value at Risk tail level to calculate.
 #' 
 #' @return A list consisting of: 
 #' \itemize{
@@ -23,8 +25,7 @@
 #'     \item filtred_proba : matrix containing the filtred probabilities \eqn{P(C_t=c_i | x_1,\dots, x_t)} of the Markov Chain.
 #'     \item smoothed_proba : matrix containing the smoothed probabilities \eqn{P(C_t=c_i | x_1,\dots, x_T)} of the Markov Chain.
 #'     \item Marg_loglik : marginal log-likelihood corresponding to the log-likelihood of log-returns. This is only return when \eqn{ModelType = 2}.
-#'     \item VaR95 : 5\% Value-at-Risk compute empirically.
-#'     \item VaR99 : 1\% Value-at-Risk compute empirically.
+#'     \item VaR : Value-at-Risk compute empirically.
 #' }
 #' 
 #' @details 
@@ -104,8 +105,9 @@
 #' }
 #' 
 #' @import Rcpp
+#' @import KScorrect
 #' @export
-MDSVfilter<-function(N,K,data,para,ModelType=0,LEVIER=FALSE){
+MDSVfilter<-function(N,K,data,para,ModelType=0,LEVIER=FALSE, calculate.VaR = TRUE, VaR.alpha = c(0.01, 0.05)){
   
   if ( (!is.numeric(N)) || (!is.numeric(K)) ) {
     stop("MDSVfilter(): input N and K must be numeric!")
@@ -123,8 +125,19 @@ MDSVfilter<-function(N,K,data,para,ModelType=0,LEVIER=FALSE){
     stop("MDSVfilter(): input ModelType must be 0, 1 or 2!")
   }
   
-  if(!is.logical(LEVIER)) {
-    stop("MDSVfilter(): input LEVIER must be logical!")
+  if((!is.logical(LEVIER)) || (!is.logical(calculate.VaR))){
+    stop("MDSVfilter(): input LEVIER and calculate.VaR must all be logical!")
+  }
+  
+  if((ModelType == 1) & (calculate.VaR)){
+    print("MDSVfilter() WARNING: VaR are compute only for log-returns! calculate.VaR set to FALSE!")
+    calculate.VaR <- FALSE
+  }
+  
+  if ( (!is.numeric(VaR.alpha)) ) {
+    stop("MDSVfilter(): input VaR.alpha must be numeric!")
+  }else if(!prod(VaR.alpha > 0) & !prod(VaR.alpha < 1)){
+    stop("MDSVfilter(): input VaR.alpha must be between 0 and 1!")
   }
   
   if ( (!is.numeric(data)) || (!is.matrix(data))  ) {
@@ -237,14 +250,32 @@ MDSVfilter<-function(N,K,data,para,ModelType=0,LEVIER=FALSE){
             BIC            = -l$loglik-0.5*length(para)*log(T),
             Levier         = l$Levier,
             filtred_proba  = l$filtred_proba,
-            smoothed_proba = l$smoothed_proba)
+            smoothed_proba = l$smoothed_proba,
+            calculate.VaR  = calculate.VaR)
   
+  if(calculate.VaR) out <- c(out, list(VaR.alpha = VaR.alpha))
   if(ModelType==2) out<-c(out,list(Marg_loglik = l$Marg_loglik))
+  if(calculate.VaR){
+    vaL   <- NULL
+    indva <- NULL
+    for(iter in 1:length(VaR.alpha)){
+      va <- try(qmist2n(VaR.alpha[iter], sigma=sig, p=pi_0),silent=T)
+      if(class(va) =='try-error') {
+        va <- try(qmixnorm(VaR.alpha[iter], rep(0,length(sig)), sqrt(sig), pi_0),silent=T)
+        if(!(class(va) =='try-error')) {
+          vaL   <- c(vaL,list(va))
+          indva <- c(indva,iter)
+        }
+      }else{
+        vaL   <- c(vaL,list(va))
+        indva <- c(indva,iter)
+      }
+    }
+    
+    names(vaL) <- paste0("VaR",100*(1-VaR.alpha[indva]))
+    out <- c(out, vaL)
+  } 
   
-  if(!(ModelType==1)){
-    out<-c(out,list(VaR95 = qmist2n(0.05,sigma=sig,p=pi_0),
-                    VaR99 = qmist2n(0.01,sigma=sig,p=pi_0)))
-  }
   
   class(out) <- "MDSVfilter"
   
@@ -288,8 +319,7 @@ qmist2n <- function(q,sigma,p){
 #'     \item filtred_proba : matrix containing the filtred probabilities \eqn{\mathbb{P}(C_t=c_i\mid x_1,\dots,\x_t)} of the Markov Chain.
 #'     \item smoothed_proba : matrix containing the smoothed probabilities \eqn{\mathbb{P}(C_t=c_i\mid x_1,\dots,\x_T)} of the Markov Chain.
 #'     \item Marg_loglik : marginal log-likelihood corresponding to the log-likelihood of log-returns. This is only return when \eqn{ModelType = 2}.
-#'     \item VaR95 : 5% Value-at-Risk compute empirically.
-#'     \item VaR99 : 1% Value-at-Risk compute empirically.
+#'     \item VaR : Value-at-Risk compute empirically.
 #' }
 #' 
 #' @seealso For fitting \code{\link{MDSVfit}}, filtering \code{\link{MDSVfilter}}, bootstrap forecasting \code{\link{MDSVboot}} and rolling estimation and forecast \code{\link{MDSVroll}}.
@@ -337,11 +367,12 @@ qmist2n <- function(q,sigma,p){
   cat(paste0("AIC \t: ", round(x$AIC,2),"\n"))
   cat(paste0("BIC \t: ", round(x$BIC,2),"\n\n"))
   
-  if(!(x$ModelType == "Univariate realized variances")){
+  if(x$calculate.VaR){
     cat("Value at Risk \n")
     cat("------------------------------------------------- \n")
-    cat(paste0("95%  \t: ", round(x$VaR95,6),"\n"))
-    cat(paste0("99%  \t: ", round(x$VaR99,6),"\n"))
+    for(iter in 1:length(x$VaR.alpha)){
+      cat(paste0(100*(1-x$VaR.alpha[iter]),"%  \t: ", x[paste0("VaR",100*(1-x$VaR.alpha[iter]))],"\n"))
+    }
   }
   
   invisible(x)
