@@ -1,13 +1,16 @@
 #include <RcppArmadillo.h>
 #include <RcppArmadilloExtensions/sample.h>
 #include <RcppEigen.h>
+#include <Rcpp.h>
 //[[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::depends(RcppEigen)]]
 using namespace Rcpp;
 
 // [[Rcpp::export]]
 Eigen::VectorXd workNat(const Eigen::Map<Eigen::VectorXd> &para_tilde,
-                   const bool &LEVIER=false, const int &Model_type=0){
+                   const bool &LEVIER=false, const int &Model_type=0, 
+                   const Rcpp::Nullable<Rcpp::Function> &fixed_pars = R_NilValue,
+                   const Rcpp::Nullable<Rcpp::Function> &fixed_values = R_NilValue){
   Eigen::VectorXd para=para_tilde;
 
   para(0)=1/(1+exp(para_tilde(0)));      //omega
@@ -32,6 +35,11 @@ Eigen::VectorXd workNat(const Eigen::Map<Eigen::VectorXd> &para_tilde,
   if(LEVIER){
     para(5+j)=exp(para_tilde(5+j));        //l
     para(6+j)=1/(1+exp(para_tilde(6+j)));  //theta
+  }
+  if(fixed_pars.isNotNull()){
+    IntegerVector fixed_par(fixed_pars.get());
+    NumericVector fixed_value(fixed_values.get());
+    for(int k=0; k<fixed_par.size(); k++) para[fixed_par[k]-1]=fixed_value[k];
   }
   return para;
 }
@@ -64,6 +72,7 @@ Eigen::VectorXd natWork(const Eigen::Map<Eigen::VectorXd> &para,
     para_tilde[5+j]=log(para[5+j]); //l
     para_tilde[6+j]=log((1/para[6+j])-1); //theta
   }
+  
   return para_tilde;
 }
 
@@ -198,8 +207,10 @@ double logLik(const Eigen::Map<Eigen::VectorXd> &para_tilde,
               const bool &LEVIER=false,
               const int &K=2,
               const int &N=2,
-              const int &Nl=70){
-  Eigen::VectorXd para=workNat(para_tilde,LEVIER,Model_type);
+              const int &Nl=70, 
+              const Rcpp::Nullable<Rcpp::Function> &fixed_pars = R_NilValue,
+              const Rcpp::Nullable<Rcpp::Function> &fixed_values = R_NilValue){
+  Eigen::VectorXd para=workNat(para_tilde,LEVIER,Model_type,fixed_pars,fixed_values);
   int n=ech.rows();
   int k=ech.cols();
   Eigen::VectorXd sigma = volatilityVector(para,K,N);
