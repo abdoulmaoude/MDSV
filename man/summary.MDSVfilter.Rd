@@ -37,8 +37,7 @@ A list consisting of:
     \item filtred_proba : matrix containing the filtred probabilities \eqn{\mathbb{P}(C_t=c_i\mid x_1,\dots,\x_t)} of the Markov Chain.
     \item smoothed_proba : matrix containing the smoothed probabilities \eqn{\mathbb{P}(C_t=c_i\mid x_1,\dots,\x_T)} of the Markov Chain.
     \item Marg_loglik : marginal log-likelihood corresponding to the log-likelihood of log-returns. This is only return when \eqn{ModelType = 2}.
-    \item VaR95 : 5% Value-at-Risk compute empirically.
-    \item VaR99 : 1% Value-at-Risk compute empirically.
+    \item VaR : Value-at-Risk compute empirically.
 }
 }
 \description{
