@@ -1,13 +1,16 @@
 #include <RcppArmadillo.h>
 #include <RcppArmadilloExtensions/sample.h>
 #include <RcppEigen.h>
+#include <Rcpp.h>
 //[[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::depends(RcppEigen)]]
 using namespace Rcpp;
 
 // [[Rcpp::export]]
 Eigen::VectorXd workNat(const Eigen::Map<Eigen::VectorXd> &para_tilde,
-                   const bool &LEVIER=false, const int &Model_type=0){
+                   const bool &LEVIER=false, const int &Model_type=0, 
+                   const Rcpp::Nullable<Rcpp::Function> &fixed_pars = R_NilValue,
+                   const Rcpp::Nullable<Rcpp::Function> &fixed_values = R_NilValue){
   Eigen::VectorXd para=para_tilde;
 
   para(0)=1/(1+exp(para_tilde(0)));      //omega
@@ -32,6 +35,11 @@ Eigen::VectorXd workNat(const Eigen::Map<Eigen::VectorXd> &para_tilde,
   if(LEVIER){
     para(5+j)=exp(para_tilde(5+j));        //l
     para(6+j)=1/(1+exp(para_tilde(6+j)));  //theta
+  }
+  if(fixed_pars.isNotNull()){
+    IntegerVector fixed_par(fixed_pars.get());
+    NumericVector fixed_value(fixed_values.get());
+    for(int k=0; k<fixed_par.size(); k++) para[fixed_par[k]-1]=fixed_value[k];
   }
   return para;
 }
@@ -64,6 +72,7 @@ Eigen::VectorXd natWork(const Eigen::Map<Eigen::VectorXd> &para,
     para_tilde[5+j]=log(para[5+j]); //l
     para_tilde[6+j]=log((1/para[6+j])-1); //theta
   }
+  
   return para_tilde;
 }
 
@@ -173,12 +182,19 @@ Eigen::VectorXd r_dens(const double &x, const Eigen::VectorXd &sd){
   return(res);
 }
 
-Eigen::VectorXd rv_dens(const Eigen::VectorXd &x,const double &shape){
+Eigen::VectorXd rv_dens(const Eigen::VectorXd &x,const double &shape, const std::string &dis = "gamma"){
   int n = x.size();
   Eigen::VectorXd res(n);
-  for(int i = 0; i < n; i++) {
-    res[i]=R::dgamma(x[i],shape,1.0/shape,false);
+  if(dis=="gamma"){
+    for(int i = 0; i < n; i++) {
+      res[i]=R::dgamma(x[i],shape,1.0/shape,false);
+    }
+  }else if(dis=="lognormal"){
+    for(int i = 0; i < n; i++) {
+      res[i]=R::dlnorm(x[i],-shape/2,shape,false);
+    }
   }
+  
   return(res);
 }
 
@@ -198,8 +214,11 @@ double logLik(const Eigen::Map<Eigen::VectorXd> &para_tilde,
               const bool &LEVIER=false,
               const int &K=2,
               const int &N=2,
-              const int &Nl=70){
-  Eigen::VectorXd para=workNat(para_tilde,LEVIER,Model_type);
+              const int &Nl=70, 
+              const Rcpp::Nullable<Rcpp::Function> &fixed_pars = R_NilValue,
+              const Rcpp::Nullable<Rcpp::Function> &fixed_values = R_NilValue,
+              const std::string &dis = "gamma"){
+  Eigen::VectorXd para=workNat(para_tilde,LEVIER,Model_type,fixed_pars,fixed_values);
   int n=ech.rows();
   int k=ech.cols();
   Eigen::VectorXd sigma = volatilityVector(para,K,N);
@@ -232,7 +251,7 @@ double logLik(const Eigen::Map<Eigen::VectorXd> &para_tilde,
     aj=r_dens(x,sigma).array()*jrv_dens(y,shape,mu_rv).array();
   }else if(Model_type==1){
     shape=para[5];
-    aj=(rv_dens(y*sigma.array().inverse(),shape).array())*(sigma.array().inverse());
+    aj=(rv_dens(y*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
   }else{
     aj=r_dens(x,sigma);
   }
@@ -257,7 +276,7 @@ double logLik(const Eigen::Map<Eigen::VectorXd> &para_tilde,
     }else if(Model_type==1){
       for(int i(1); i<n;i++){
         y=ech(i,1);
-        Res=(rv_dens(y*sigma.array().inverse(),shape).array())*(sigma.array().inverse());
+        Res=(rv_dens(y*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
         aj=(((w.transpose())*matP).array())*(Res.transpose().array());
         a=aj.sum();
         lik+=log(a);
@@ -296,7 +315,7 @@ double logLik(const Eigen::Map<Eigen::VectorXd> &para_tilde,
       for(int i(1); i<n;i++){
         y=ech(i,1);
         sigma1=sigma*Levier[i];
-        Res=(rv_dens(y*sigma1.array().inverse(),shape).array())*(sigma1.array().inverse());
+        Res=(rv_dens(y*sigma1.array().inverse(),shape, dis).array())*(sigma1.array().inverse());
         aj=(((w.transpose())*matP).array())*(Res.transpose().array());
         a=aj.sum();
         lik+=log(a);
@@ -327,7 +346,8 @@ Rcpp::List logLik2(const Eigen::MatrixXd &ech,
               const int &N=2,
               const double &r=0,
               const int &t=2,
-              const int &Nl=70){
+              const int &Nl=70,
+              const std::string &dis = "gamma"){
   int n=ech.rows();
   int k=ech.cols();
   Eigen::VectorXd sigma = volatilityVector(para,K,N);
@@ -375,7 +395,7 @@ Rcpp::List logLik2(const Eigen::MatrixXd &ech,
     likm=log(ajm.sum());
   }else if(Model_type==1){
     shape=para[5];
-    aj=(rv_dens(y*sigma.array().inverse(),shape).array())*(sigma.array().inverse());
+    aj=(rv_dens(y*sigma.array().inverse(),shape, dis).array())*(sigma.array().inverse());
   }else{
     aj=r_dens(x,sigma);
   }
@@ -410,14 +430,14 @@ Rcpp::List logLik2(const Eigen::MatrixXd &ech,
     }else if(Model_type==1){
       for(int i(1); i<n;i++){
         y=ech(i,1);
-        Res=(rv_dens(y*sigma.array().inverse(),shape).array())*(sigma.array().inverse());
+        Res=(rv_dens(y*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
         aj=(((w.transpose())*matP).array())*(Res.transpose().array());
         a=aj.sum();
         lik+=log(a);
         w=aj/a;
         proba1.col(i) = w;
       }
-      Res=(rv_dens(r*sigma.array().inverse(),shape).array())*(sigma.array().inverse());
+      Res=(rv_dens(r*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
       aj=(((w.transpose())*matP).array())*(Res.transpose().array());
       a=aj.sum();
       pred_lik=log(a);
@@ -470,7 +490,7 @@ Rcpp::List logLik2(const Eigen::MatrixXd &ech,
       for(int i(1); i<n;i++){
         y=ech(i,1);
         sigma1=sigma*Levier[i];
-        Res=(rv_dens(y*sigma1.array().inverse(),shape).array())*(sigma1.array().inverse());
+        Res=(rv_dens(y*sigma1.array().inverse(),shape,dis).array())*(sigma1.array().inverse());
         aj=(((w.transpose())*matP).array())*(Res.transpose().array());
         a=aj.sum();
         lik+=log(a);
@@ -479,7 +499,7 @@ Rcpp::List logLik2(const Eigen::MatrixXd &ech,
       }
       double levier=L["levier"];
       sigma1=sigma*levier;
-      Res=(rv_dens(r*sigma1.array().inverse(),shape).array())*(sigma1.array().inverse());
+      Res=(rv_dens(r*sigma1.array().inverse(),shape,dis).array())*(sigma1.array().inverse());
       aj=(((w.transpose())*matP).array())*(Res.transpose().array());
       a=aj.sum();
       pred_lik=log(a);

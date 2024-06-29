@@ -12,44 +12,47 @@ end.date   <- as.Date("2019-12-31")
 # Descriptive statitics
 #-------------------------------------------------------------------------------
 
-des_stats<-NULL
+des_stats_r  <- NULL
+des_stats_rv <- NULL
 for(index in index_set){
-  donne<-get(index)[rownames(get(index))>=start.date & rownames(get(index))<=end.date,]
-  ech<-donne[,"r"]
-  ech<-ech-mean(ech)
-  q<-quantile(ech)
+  donne <- get(index)[rownames(get(index))>=start.date & rownames(get(index))<=end.date,]
+  ech   <- donne[,"r"]
+  ech   <- ech-mean(ech)
+  q     <- quantile(ech)
   #descriptive statistics
-  des_stat <-    c("N" = length(ech),
-                   "Min." = q[[1]],
-                   "Q1" = q[[2]],
+  des_stat <-    c("Obs" = length(ech),
                    "Mean" = mean(ech),
-                   "Median" = q[[3]],
                    "StDev" = sd(ech),
                    "Skewness" = timeDate::skewness(ech, method="moment"),
                    "Kurtosis" = timeDate::kurtosis(ech, method="moment"),
+                   "Min." = q[[1]],
+                   "Q1" = q[[2]],
+                   "Q2" = q[[3]],
                    "Q3" = q[[4]],
                    "Max." = q[[5]]
   )
-  des_stats<-rbind(des_stats,des_stat)
-  ech<-donne[,"rv"]
-  q<-quantile(ech)
+  des_stats_r <- rbind(des_stats_r,des_stat)
+  ech         <- donne[,"rv"]
+  q           <- quantile(ech)
   #descriptive statistics
-  des_stat <-    c("N" = length(ech),
-                   "Min." = q[[1]],
-                   "Q1" = q[[2]],
+  des_stat <-    c("Obs" = length(ech),
                    "Mean" = mean(ech),
-                   "Median" = q[[3]],
                    "StDev" = sd(ech),
                    "Skewness" = timeDate::skewness(ech, method="moment"),
                    "Kurtosis" = timeDate::kurtosis(ech, method="moment"),
+                   "Min." = q[[1]],
+                   "Q1" = q[[2]],
+                   "Q2" = q[[3]],
                    "Q3" = q[[4]],
                    "Max." = q[[5]]
   )
-  des_stats<-rbind(des_stats,des_stat)
+  des_stats_rv <- rbind(des_stats_rv,des_stat)
 }
 
-rownames(des_stats)<-rep(index_set,1,each=2)
-write.csv(round(des_stats,3), "stat.csv")
+rownames(des_stats_rv) <- index_set
+rownames(des_stats_r)  <- index_set
+write.csv(round(des_stats_r,3),  "stat_r.csv")
+write.csv(round(des_stats_rv,3), "stat_rv.csv")
 
 
 View(round(des_stats,2))

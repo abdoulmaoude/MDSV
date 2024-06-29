@@ -19,7 +19,11 @@ MDSVfit(N, K, data, ModelType = 0, LEVIER = FALSE, start.pars = list(), ...)
 
 \item{start.pars}{List of staring parameters for the optimization routine. These are not usually required unless the optimization has problems converging.}
 
-\item{...}{Further options for the \code{\link{solnp}} solver of the \pkg{Rsolnp} package.}
+\item{...}{Further options for the \code{\link{solnp}} solver of the \pkg{Rsolnp} package or for fixing some parameters (see @details ).}
+
+\item{fixed.pars}{A vector of the position of the parameters of the model to be fixed}
+
+\item{fixed.values}{A vector containing the value of parameters of the model to be fixed. Must have the same length as fixed.pars}
 }
 \value{
 A list consisting of:
@@ -54,6 +58,7 @@ where \eqn{L} is the log-likelihood, \eqn{k} is the number of parameters and \eq
 The \link[base]{class} of the output of this function is \code{\link{MDSVfit}}. This class has a \link[base]{summary}, 
 \link[base]{print} and \link[base]{plot} \link[utils]{methods} to summarize, print and plot the results. See 
 \code{\link{summary.MDSVfit}}, \code{\link{print.MDSVfit}} and \code{\link{plot.MDSVfit}} for more details.
+To fixe some parameter in the optimization, you can use the deux optionnal parameters :
 }
 \examples{
 \dontrun{

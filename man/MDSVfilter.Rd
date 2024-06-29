@@ -4,7 +4,16 @@
 \alias{MDSVfilter}
 \title{MDSV Filtering}
 \usage{
-MDSVfilter(N, K, data, para, ModelType = 0, LEVIER = FALSE)
+MDSVfilter(
+  N,
+  K,
+  data,
+  para,
+  ModelType = 0,
+  LEVIER = FALSE,
+  calculate.VaR = TRUE,
+  VaR.alpha = c(0.01, 0.05)
+)
 }
 \arguments{
 \item{N}{An integer designing the number of components for the MDSV process}
@@ -18,6 +27,10 @@ MDSVfilter(N, K, data, para, ModelType = 0, LEVIER = FALSE)
 \item{ModelType}{An integer designing the type of model to be fit. \eqn{0} for univariate log-returns, \eqn{1} for univariate realized variances and \eqn{2} for joint log-return and realized variances.}
 
 \item{LEVIER}{if \code{TRUE}, estime the MDSV model with leverage.}
+
+\item{calculate.VaR}{Whether to calculate forecast Value at Risk during the estimation.}
+
+\item{VaR.alpha}{The Value at Risk tail level to calculate.}
 }
 \value{
 A list consisting of: 
@@ -36,8 +49,7 @@ A list consisting of:
     \item filtred_proba : matrix containing the filtred probabilities \eqn{P(C_t=c_i | x_1,\dots, x_t)} of the Markov Chain.
     \item smoothed_proba : matrix containing the smoothed probabilities \eqn{P(C_t=c_i | x_1,\dots, x_T)} of the Markov Chain.
     \item Marg_loglik : marginal log-likelihood corresponding to the log-likelihood of log-returns. This is only return when \eqn{ModelType = 2}.
-    \item VaR95 : 5\% Value-at-Risk compute empirically.
-    \item VaR99 : 1\% Value-at-Risk compute empirically.
+    \item VaR : Value-at-Risk compute empirically.
 }
 }
 \description{

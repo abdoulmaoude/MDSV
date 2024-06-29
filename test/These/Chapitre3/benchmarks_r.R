@@ -15,7 +15,7 @@ index_set<-c("aex", "aord", "bell", "bsesn", "bvsp", "cac40", "dax", "dji", "ftm
              "hsi", "ibex35", "kospi", "kse", "mxx", "n225", "nasdaq", "nifty50", "omxc20", "omxhpi",
              "omxspi", "oseax", "psi", "rut", "smsi", "sp500", "ssec", "ssmi", "sti", "stoxx50", "tsx")
 
-index_set<- "nasdaq" #c("sp500", "nasdaq", "ftse", "n225")
+#index_set<- "nasdaq" #c("sp500", "nasdaq", "ftse", "n225")
 
 start.date <- as.Date("2000-01-01") 
 end.date   <- as.Date("2019-12-31")
@@ -108,7 +108,7 @@ colnames(model_add) <- vars
 model <- cbind(model, model_add)
 
 #setup parallel backend to use many processors
-cluster <- makeCluster(2)
+cluster <- makeCluster(6)
 registerDoSNOW(cluster)
 pb <- txtProgressBar(min=1, max = nrow(model), style = 3)
 progress <- function(n) setTxtProgressBar(pb, n)
@@ -127,7 +127,7 @@ Y<-foreach(i=1:nrow(model), .combine=rbind, .export=c("solnp"),
   model[i,"length"]     <- length(nam_)
   Model                 <- as.character(model[i,"Model"])
   LEVIER                <- model[i,"LEVIER"]
-  N                     <- 2
+  N                     <- 10
   
   sourceCpp(paste0("benchmarks/",Model,".cpp"))
   

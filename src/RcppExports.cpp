@@ -13,15 +13,17 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // workNat
-Eigen::VectorXd workNat(const Eigen::Map<Eigen::VectorXd>& para_tilde, const bool& LEVIER, const int& Model_type);
-RcppExport SEXP _MDSV_workNat(SEXP para_tildeSEXP, SEXP LEVIERSEXP, SEXP Model_typeSEXP) {
+Eigen::VectorXd workNat(const Eigen::Map<Eigen::VectorXd>& para_tilde, const bool& LEVIER, const int& Model_type, const Rcpp::Nullable<Rcpp::Function>& fixed_pars, const Rcpp::Nullable<Rcpp::Function>& fixed_values);
+RcppExport SEXP _MDSV_workNat(SEXP para_tildeSEXP, SEXP LEVIERSEXP, SEXP Model_typeSEXP, SEXP fixed_parsSEXP, SEXP fixed_valuesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::VectorXd>& >::type para_tilde(para_tildeSEXP);
     Rcpp::traits::input_parameter< const bool& >::type LEVIER(LEVIERSEXP);
     Rcpp::traits::input_parameter< const int& >::type Model_type(Model_typeSEXP);
-    rcpp_result_gen = Rcpp::wrap(workNat(para_tilde, LEVIER, Model_type));
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<Rcpp::Function>& >::type fixed_pars(fixed_parsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<Rcpp::Function>& >::type fixed_values(fixed_valuesSEXP);
+    rcpp_result_gen = Rcpp::wrap(workNat(para_tilde, LEVIER, Model_type, fixed_pars, fixed_values));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -106,8 +108,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // logLik
-double logLik(const Eigen::Map<Eigen::VectorXd>& para_tilde, const Eigen::MatrixXd& ech, const int& Model_type, const bool& LEVIER, const int& K, const int& N, const int& Nl);
-RcppExport SEXP _MDSV_logLik(SEXP para_tildeSEXP, SEXP echSEXP, SEXP Model_typeSEXP, SEXP LEVIERSEXP, SEXP KSEXP, SEXP NSEXP, SEXP NlSEXP) {
+double logLik(const Eigen::Map<Eigen::VectorXd>& para_tilde, const Eigen::MatrixXd& ech, const int& Model_type, const bool& LEVIER, const int& K, const int& N, const int& Nl, const Rcpp::Nullable<Rcpp::Function>& fixed_pars, const Rcpp::Nullable<Rcpp::Function>& fixed_values, const std::string& dis);
+RcppExport SEXP _MDSV_logLik(SEXP para_tildeSEXP, SEXP echSEXP, SEXP Model_typeSEXP, SEXP LEVIERSEXP, SEXP KSEXP, SEXP NSEXP, SEXP NlSEXP, SEXP fixed_parsSEXP, SEXP fixed_valuesSEXP, SEXP disSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -118,13 +120,16 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int& >::type K(KSEXP);
     Rcpp::traits::input_parameter< const int& >::type N(NSEXP);
     Rcpp::traits::input_parameter< const int& >::type Nl(NlSEXP);
-    rcpp_result_gen = Rcpp::wrap(logLik(para_tilde, ech, Model_type, LEVIER, K, N, Nl));
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<Rcpp::Function>& >::type fixed_pars(fixed_parsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<Rcpp::Function>& >::type fixed_values(fixed_valuesSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type dis(disSEXP);
+    rcpp_result_gen = Rcpp::wrap(logLik(para_tilde, ech, Model_type, LEVIER, K, N, Nl, fixed_pars, fixed_values, dis));
     return rcpp_result_gen;
 END_RCPP
 }
 // logLik2
-Rcpp::List logLik2(const Eigen::MatrixXd& ech, const Eigen::VectorXd& para, const int& Model_type, const bool& LEVIER, const int& K, const int& N, const double& r, const int& t, const int& Nl);
-RcppExport SEXP _MDSV_logLik2(SEXP echSEXP, SEXP paraSEXP, SEXP Model_typeSEXP, SEXP LEVIERSEXP, SEXP KSEXP, SEXP NSEXP, SEXP rSEXP, SEXP tSEXP, SEXP NlSEXP) {
+Rcpp::List logLik2(const Eigen::MatrixXd& ech, const Eigen::VectorXd& para, const int& Model_type, const bool& LEVIER, const int& K, const int& N, const double& r, const int& t, const int& Nl, const std::string& dis);
+RcppExport SEXP _MDSV_logLik2(SEXP echSEXP, SEXP paraSEXP, SEXP Model_typeSEXP, SEXP LEVIERSEXP, SEXP KSEXP, SEXP NSEXP, SEXP rSEXP, SEXP tSEXP, SEXP NlSEXP, SEXP disSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -137,7 +142,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double& >::type r(rSEXP);
     Rcpp::traits::input_parameter< const int& >::type t(tSEXP);
     Rcpp::traits::input_parameter< const int& >::type Nl(NlSEXP);
-    rcpp_result_gen = Rcpp::wrap(logLik2(ech, para, Model_type, LEVIER, K, N, r, t, Nl));
+    Rcpp::traits::input_parameter< const std::string& >::type dis(disSEXP);
+    rcpp_result_gen = Rcpp::wrap(logLik2(ech, para, Model_type, LEVIER, K, N, r, t, Nl, dis));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -197,15 +203,15 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_MDSV_workNat", (DL_FUNC) &_MDSV_workNat, 3},
+    {"_MDSV_workNat", (DL_FUNC) &_MDSV_workNat, 5},
     {"_MDSV_natWork", (DL_FUNC) &_MDSV_natWork, 3},
     {"_MDSV_volatilityVector", (DL_FUNC) &_MDSV_volatilityVector, 3},
     {"_MDSV_probapi", (DL_FUNC) &_MDSV_probapi, 3},
     {"_MDSV_P", (DL_FUNC) &_MDSV_P, 3},
     {"_MDSV_levierVolatility1", (DL_FUNC) &_MDSV_levierVolatility1, 4},
     {"_MDSV_levierVolatility", (DL_FUNC) &_MDSV_levierVolatility, 4},
-    {"_MDSV_logLik", (DL_FUNC) &_MDSV_logLik, 7},
-    {"_MDSV_logLik2", (DL_FUNC) &_MDSV_logLik2, 9},
+    {"_MDSV_logLik", (DL_FUNC) &_MDSV_logLik, 10},
+    {"_MDSV_logLik2", (DL_FUNC) &_MDSV_logLik2, 10},
     {"_MDSV_levierVolatilityMat", (DL_FUNC) &_MDSV_levierVolatilityMat, 5},
     {"_MDSV_R_hat", (DL_FUNC) &_MDSV_R_hat, 10},
     {"_MDSV_f_sim", (DL_FUNC) &_MDSV_f_sim, 9},

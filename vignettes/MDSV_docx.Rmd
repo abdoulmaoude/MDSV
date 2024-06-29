@@ -172,7 +172,7 @@ para      <- c(omega = 0.52, a = 0.99, b = 2.77, sigma = 1.95, v0 = 0.72,
                l = 0.78, theta = 0.876)
 
 # Model filtering : univariate log-returns (ModelType = 0)
-out       <- MDSVfilter(K = K, N = N,data = sp500, para = para, ModelType = 0, LEVIER = LEVIER)
+out       <- MDSVfilter(K = K, N = N,data = sp500, para = para, ModelType = 0, LEVIER = LEVIER, calculate.VaR = TRUE, VaR.alpha = c(0.05))
 # Summary
 summary(out)
 # Plot
@@ -181,7 +181,7 @@ plot(out)
 para      <- c(omega = 0.52, a = 0.99, b = 2.77, sigma = 1.95, v0 = 0.72, shape = 2.10)
 
 # Model filtering : univariate realized variances (ModelType = 1) without leverage
-out       <- MDSVfilter(K = K, N = N, data = sp500, para = para, ModelType = 1, LEVIER = FALSE)
+out       <- MDSVfilter(K = K, N = N, data = sp500, para = para, ModelType = 1, LEVIER = FALSE, calculate.VaR = TRUE, VaR.alpha = c(0.05))
 # Summary
 summary(out)
 # Plot
@@ -192,7 +192,7 @@ para      <- c(omega = 0.52, a = 0.99, b = 2.77, sigma = 1.95, v0 = 0.72,
               l = 0.78, theta = 0.876)
 
 # Model filtering : joint model (ModelType = 2)
-out       <- MDSVfilter(K = K, N = N,data = sp500, para = para, ModelType = 2, LEVIER = LEVIER)
+out       <- MDSVfilter(K = K, N = N,data = sp500, para = para, ModelType = 2, LEVIER = LEVIER, calculate.VaR = TRUE, VaR.alpha = c(0.05))
 # Summary
 summary(out)
 # Plot

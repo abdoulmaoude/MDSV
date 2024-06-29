@@ -1,6 +1,7 @@
 path<-"C:/Users/DellPC/Dropbox/Abdoul/These/Article1/Code/MDSV/Code_These/Ess"
 path<-"/home/maoudek/Rsim/Article1/MDSV/Returns"
 path<-"C:/Users/DellPC/Dropbox/Abdoul/These/Article1/Code/MDSV/Code_These/MDSV_package/MDSV/test/These/Chapitre3"
+path<-"C:/Users/DellPC/Dropbox/Abdoul/These/Article1/Code/MDSV/Code_These/Ess/forcastArticle"
 setwd(path)
 library(MDSV)
 if(!require(Rsolnp)){install.packages("Rsolnp")}; library(Rsolnp)
@@ -51,7 +52,7 @@ logLik<-function(ech,para_tilde,LEVIER,r=0){
   sigma<-((sqrt(1/(1-2*para[4])))*exp(para[1]+(para[5]^2)*para[8]/2-para[4]+(para[3]^2)/(2*(1-para[4]))))^(1/(1-para[2])) # variance inconditionnel
   mu_rv<-para[6] + para[7]*log(sigma)+para[3]*(ech[1,"r"]/sqrt(sigma))+para[4]*((ech[1,"r"]/sqrt(sigma))^2-1)
   aj<-dnorm(ech[1,"r"]/sqrt(sigma))*dlnorm(ech[1,"rv"],mu_rv,sqrt(para[8]))/sqrt(sigma)
-  ajm<-dnorm(ech[1,"r"]/sqrt(sigma))
+  ajm<-dnorm(ech[1,"r"]/sqrt(sigma))/sqrt(sigma)
   lik<-log(aj)
   likm<-log(ajm)
   
@@ -63,12 +64,12 @@ logLik<-function(ech,para_tilde,LEVIER,r=0){
     sigma<-exp(para[1]+para[2]*log(sigma)+para[5]*(log(ech[i-1,"rv"])-mu_rv)+para[9]*(ech[i-1,"r"]/sqrt(sigma))+para[10]*((ech[i-1,"r"]/sqrt(sigma))^2-1))
     mu_rv<-para[6] + para[7]*log(sigma)+para[3]*(ech[i,"r"]/sqrt(sigma))+para[4]*((ech[i,"r"]/sqrt(sigma))^2-1)
     aj<-dnorm(ech[i,"r"]/sqrt(sigma))*dlnorm(ech[i,"rv"],mu_rv,sqrt(para[8]))/sqrt(sigma)
-    ajm<-dnorm(ech[i,"r"]/sqrt(sigma))
+    ajm<-dnorm(ech[i,"r"]/sqrt(sigma))/sqrt(sigma)
     lik<-lik+log(aj)
     likm <-likm+log(ajm)
   }
   sigma<-exp(para[1]+para[2]*log(sigma)+para[5]*(log(ech[n,"rv"])-mu_rv)+para[9]*(ech[n,"r"]/sqrt(sigma))+para[10]*((ech[n,"r"]/sqrt(sigma))^2-1))
-  aj<-dnorm(r/sqrt(sigma))
+  aj<-dnorm(r/sqrt(sigma))/sqrt(sigma)
   likp<-log(aj)
   
   attr(lik,"Pred_lik") <- likp
@@ -129,11 +130,11 @@ for(i in 1:nrow(model)){
   model[i,'BIC']    <- model[i,"loglik"] - length(params)*log(length(nam_))/2
   model[i,"time"]   <- difftime(Sys.time(), start_time,units = "secs")[[1]]
   
-  write.csv(model, paste(filename,"csv",sep="."), row.names=FALSE)
+  #write.csv(model, paste(filename,"csv",sep="."), row.names=FALSE)
   print(paste("===",round(100*i/nrow(model),2) , "%" ,"==== LOGLIK = ", model[i,"loglik"], "==="))
 }
 
-write.csv(model, "Estim_ALLRealEGARCH.csv", row.names=FALSE)
+write.csv(model, "Estim_ALLRealEGARCH1.csv", row.names=FALSE)
 
 #-------------------------------------------------------------------------------
 # Real-EGARCH : PREVISION
@@ -149,14 +150,14 @@ g<-function(vector){
   return(Sortie)
 }
 
-model_extern<-expand.grid(index=index_set, LEVIER=c(FALSE,TRUE), n.ahead=c(100),
-                          forecast.length=c(756), refit.every=c(63), refit.window=c("recursive"),
+model_extern<-expand.grid(window = c(252, 504, 756, 1008, 1260, 1512), index=index_set, LEVIER=c(TRUE), n.ahead=c(100),
+                          forecast.length=c(1512), refit.every=c(21), refit.window=c("recursive"),
                           calculate.VaR=c(TRUE), rseed=1050)
 
 Loss.horizon    <- c(1,5,10,25,50,75,100)
 n.ahead         <- 100
-forecast.length <- 756
-refit.every     <- 63
+forecast.length <- 1512
+refit.every     <- 21
 refit.window    <- "recursive"
 VaR.alpha       <- c(0.01,0.05,0.10)
 rseed           <- 1050
@@ -173,18 +174,17 @@ vars<-c('start.date','end.date','pred_dens',paste('QLIKc_R',Loss.horizon), paste
 model_add <- matrix(0, nrow=nrow(model_extern), ncol=length(vars))
 colnames(model_add) <- vars
 model_extern <- cbind(model_extern, model_add)
-
 R_var <- rep(0,length(Loss.horizon))
 
-for(i in 1:nrow(model_extern)){
+for(i in c(1,7,13,19)){
   start_time <- Sys.time()
   index                        <- as.character(model_extern[i,"index"])
   donne                        <- get(index)[rownames(get(index))>=start.date & rownames(get(index))<=end.date,]
   nam_                         <- rownames(donne)
   donne[,"r"]                  <- donne[,"r"] - mean(donne[,"r"])
   donne                        <- cbind("rv"=donne[,"rv"], "r"=donne[,"r"])
-  model_extern[i,"start.date"] <- as.character(as.Date(nam_[length(nam_)])-forecast.length)
-  model_extern[i,"end.date"]   <- as.character(nam_[length(nam_)])
+  model_extern[i:(i+5),"start.date"] <- as.character(as.Date(nam_[length(nam_)])-forecast.length)
+  model_extern[i:(i+5),"end.date"]   <- as.character(nam_[length(nam_)])
   dist                         <- as.character(model_extern[i,"dist"])
   LEVIER                       <- model_extern[i,"LEVIER"]
   calculate.VaR                <- as.logical(model_extern[i,"calculate.VaR"])
@@ -209,7 +209,6 @@ for(i in 1:nrow(model_extern)){
   model_add <- matrix(0, nrow=nrow(model), ncol=length(vars))
   colnames(model_add) <- vars
   model <- cbind(model, model_add)
-  
   
   para            <- c(-0.03,0.7,0.01,0.04,0.18,0.12,1.12,5)
   if(LEVIER) para <- c(para,-0.005,0.043)
@@ -334,76 +333,83 @@ for(i in 1:nrow(model_extern)){
       model[,paste0('I',100*(1-VaR.alpha[iter]))] <- (model[,'rt'] < model[,paste0('VaR',100*(1-VaR.alpha[iter]))])
     }
   
-  model_extern[i,'pred_dens'] <- sum(model[,"pred_lik"])
-  
-  for_R_var   <- model[,grep('R_for', colnames(model), fixed=TRUE)]
-  for_R_var   <- for_R_var[,-grep('R_for_m', colnames(for_R_var), fixed=TRUE)]
-  for_R_err   <- model[,grep('R_tru', colnames(model), fixed=TRUE)]
-  for_R_err   <- for_R_err[,-grep('R_tru_m', colnames(for_R_err), fixed=TRUE)]
-  model_extern[i,paste('QLIKc_R',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
-  model_extern[i,paste('RMSEc_R',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
-  model_extern[i,paste('MAEc_R',Loss.horizon)] <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
-  
-  for_R_var   <- model[,grep('R_for_m', colnames(model), fixed=TRUE)]
-  for_R_err   <- model[,grep('R_tru_m', colnames(model), fixed=TRUE)]
-  model_extern[i,paste('QLIKm_R',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
-  model_extern[i,paste('RMSEm_R',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
-  model_extern[i,paste('MAEm_R',Loss.horizon)]  <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
-  
-  for_R_var   <- model[,grep('RV_for', colnames(model), fixed=TRUE)]
-  for_R_var   <- for_R_var[,-grep('RV_for_m', colnames(for_R_var), fixed=TRUE)]
-  for_R_err   <- model[,grep('RV_tru', colnames(model), fixed=TRUE)]
-  for_R_err   <- for_R_err[,-grep('RV_tru_m', colnames(for_R_err), fixed=TRUE)]
-  model_extern[i,paste('QLIKc_RV',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
-  model_extern[i,paste('RMSEc_RV',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
-  model_extern[i,paste('MAEc_RV',Loss.horizon)] <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
-  
-  for_R_var   <- model[,grep('RV_for_m', colnames(model), fixed=TRUE)]
-  for_R_err   <- model[,grep('RV_tru_m', colnames(model), fixed=TRUE)]
-  model_extern[i,paste('QLIKm_RV',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
-  model_extern[i,paste('RMSEm_RV',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
-  model_extern[i,paste('MAEm_RV',Loss.horizon)]  <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
-  
-  LR.uc_vec <- LR.cc_vec <- LR.ind_vec <- NULL
-  p.uc_vec  <- p.cc_vec  <- p.ind_vec  <- NULL
-  
-  for(iter in 1:length(VaR.alpha)){
-    viol      <- sum(model[,paste0('I',100*(1-VaR.alpha[iter]))])
-    alpha_hat <- sum(model[,paste0('I',100*(1-VaR.alpha[iter]))])/forecast.length
-    LR.uc     <- 2*log(((alpha_hat^viol)*((1-alpha_hat)^(forecast.length-viol)))/((VaR.alpha[iter]^viol)*((1-VaR.alpha[iter])^(forecast.length-viol))))
+  for(j in 0:5){
+    window = c(252, 504, 756, 1008, 1260, 1512)[j+1]
     
-    viol      <- g(model[,paste0('I',100*(1-VaR.alpha[iter]))])
-    pi        <- (viol[1,2]+viol[2,2])/sum(viol)
-    pi0       <- (viol[1,2])/(viol[1,1]+viol[1,2])
-    pi1       <- (viol[2,2])/(viol[2,2]+viol[2,1])
-    LR.ind    <- - 2*log((((1-pi)^(viol[1,1]+viol[2,1]))*(pi^(viol[1,2]+viol[2,2])))/
-                           ((((1-pi0)^viol[1,1])*(pi0^viol[1,2]))*(((1-pi1)^viol[2,1])*(pi1^viol[2,2]))))
+    mod <- model[(1512-window+1):1512,]
+    model_extern[i+j,'pred_dens'] <- sum(mod[,"pred_lik"])
     
-    LR.uc_vec <- c(LR.uc_vec,LR.uc)
-    LR.cc_vec <- c(LR.cc_vec,LR.uc+LR.ind)
-    LR.ind_vec <- c(LR.ind_vec,LR.ind)
-    p.uc_vec <- c(p.uc_vec,1-pchisq(LR.uc,1))
-    p.cc_vec <- c(p.cc_vec,1-pchisq(LR.uc+LR.ind,2))
-    p.ind_vec <- c(p.ind_vec,1-pchisq(LR.ind,1))
+    for_R_var   <- mod[,grep('R_for', colnames(mod), fixed=TRUE)]
+    for_R_var   <- for_R_var[,-grep('R_for_m', colnames(for_R_var), fixed=TRUE)]
+    for_R_err   <- mod[,grep('R_tru', colnames(mod), fixed=TRUE)]
+    for_R_err   <- for_R_err[,-grep('R_tru_m', colnames(for_R_err), fixed=TRUE)]
+    model_extern[i+j,paste('QLIKc_R',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
+    model_extern[i+j,paste('RMSEc_R',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
+    model_extern[i+j,paste('MAEc_R',Loss.horizon)] <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
+    
+    for_R_var   <- mod[,grep('R_for_m', colnames(mod), fixed=TRUE)]
+    for_R_err   <- mod[,grep('R_tru_m', colnames(mod), fixed=TRUE)]
+    model_extern[i+j,paste('QLIKm_R',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
+    model_extern[i+j,paste('RMSEm_R',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
+    model_extern[i+j,paste('MAEm_R',Loss.horizon)]  <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
+    
+    for_R_var   <- mod[,grep('RV_for', colnames(mod), fixed=TRUE)]
+    for_R_var   <- for_R_var[,-grep('RV_for_m', colnames(for_R_var), fixed=TRUE)]
+    for_R_err   <- mod[,grep('RV_tru', colnames(mod), fixed=TRUE)]
+    for_R_err   <- for_R_err[,-grep('RV_tru_m', colnames(for_R_err), fixed=TRUE)]
+    model_extern[i+j,paste('QLIKc_RV',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
+    model_extern[i+j,paste('RMSEc_RV',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
+    model_extern[i+j,paste('MAEc_RV',Loss.horizon)] <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
+    
+    for_R_var   <- mod[,grep('RV_for_m', colnames(mod), fixed=TRUE)]
+    for_R_err   <- mod[,grep('RV_tru_m', colnames(mod), fixed=TRUE)]
+    model_extern[i+j,paste('QLIKm_RV',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
+    model_extern[i+j,paste('RMSEm_RV',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
+    model_extern[i+j,paste('MAEm_RV',Loss.horizon)]  <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
+    
+    LR.uc_vec <- LR.cc_vec <- LR.ind_vec <- NULL
+    p.uc_vec  <- p.cc_vec  <- p.ind_vec  <- NULL
+    
+    for(iter in 1:length(VaR.alpha)){
+      viol      <- sum(mod[,paste0('I',100*(1-VaR.alpha[iter]))])
+      alpha_hat <- sum(mod[,paste0('I',100*(1-VaR.alpha[iter]))])/forecast.length
+      LR.uc     <- 2*log(((alpha_hat^viol)*((1-alpha_hat)^(forecast.length-viol)))/((VaR.alpha[iter]^viol)*((1-VaR.alpha[iter])^(forecast.length-viol))))
+      
+      viol      <- g(mod[,paste0('I',100*(1-VaR.alpha[iter]))])
+      pi        <- (viol[1,2]+viol[2,2])/sum(viol)
+      pi0       <- (viol[1,2])/(viol[1,1]+viol[1,2])
+      pi1       <- (viol[2,2])/(viol[2,2]+viol[2,1])
+      LR.ind    <- - 2*log((((1-pi)^(viol[1,1]+viol[2,1]))*(pi^(viol[1,2]+viol[2,2])))/
+                             ((((1-pi0)^viol[1,1])*(pi0^viol[1,2]))*(((1-pi1)^viol[2,1])*(pi1^viol[2,2]))))
+      
+      LR.uc_vec <- c(LR.uc_vec,LR.uc)
+      LR.cc_vec <- c(LR.cc_vec,LR.uc+LR.ind)
+      LR.ind_vec <- c(LR.ind_vec,LR.ind)
+      p.uc_vec <- c(p.uc_vec,1-pchisq(LR.uc,1))
+      p.cc_vec <- c(p.cc_vec,1-pchisq(LR.uc+LR.ind,2))
+      p.ind_vec <- c(p.ind_vec,1-pchisq(LR.ind,1))
+    }
+    
+    names(LR.uc_vec) <- names(LR.cc_vec) <- names(LR.ind_vec) <- paste(100*(1-VaR.alpha), "%")
+    names(p.uc_vec)  <- names(p.cc_vec)  <- names(p.ind_vec) <- paste(100*(1-VaR.alpha), "%")
+    
+    model_extern[i+j,paste('LR.uc_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.uc_vec
+    model_extern[i+j,paste('LR.ind_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.ind_vec
+    model_extern[i+j,paste('LR.cc_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.cc_vec
+    
+    model_extern[i+j,paste('LR.uc_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.uc_vec
+    model_extern[i+j,paste('LR.ind_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.ind_vec
+    model_extern[i+j,paste('LR.cc_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.cc_vec
+    
+    model_extern[i+j,"time"] <- difftime(Sys.time(), start_time,units = "secs")[[1]]
   }
   
-  names(LR.uc_vec) <- names(LR.cc_vec) <- names(LR.ind_vec) <- paste(100*(1-VaR.alpha), "%")
-  names(p.uc_vec)  <- names(p.cc_vec)  <- names(p.ind_vec) <- paste(100*(1-VaR.alpha), "%")
-  
-  model_extern[i,paste('LR.uc_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.uc_vec
-  model_extern[i,paste('LR.ind_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.ind_vec
-  model_extern[i,paste('LR.cc_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.cc_vec
-  
-  model_extern[i,paste('LR.uc_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.uc_vec
-  model_extern[i,paste('LR.ind_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.ind_vec
-  model_extern[i,paste('LR.cc_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.cc_vec
-  
-  model_extern[i,"time"] <- difftime(Sys.time(), start_time,units = "secs")[[1]]
-  
   write.csv(model, paste(filename,"csv",sep="."), row.names=FALSE)
+  print(paste("===",round(100*i/nrow(model_extern),2) , "%" ,"===="))
+  write.csv(model_extern, "Forecast_RealEGARCH.csv", row.names=FALSE)
 }
 
-write.csv(model_extern, "Forecast_RealEGARCH_756.csv", row.names=FALSE)
+#write.csv(model_extern, "Forecast_RealEGARCH_756.csv", row.names=FALSE)
 
 
 #-------------------------------------------------------------------------------
@@ -429,8 +435,13 @@ para_init<-function(LEVIER,K){
   return(list(para=para,P=P,Vol=Vol))
 }
 
-model<-expand.grid(index=index_set[1], start.date=as.Date("2000-01-01"), end.date=as.Date("2019-12-31"), length=0,
-                   K=c(4), LEVIER=c(TRUE))
+model<-rbind(expand.grid(index=c('ftse','dax'), start.date=as.Date("2000-01-01"), end.date=as.Date("2019-12-31"), length=0,
+                   K=c(3), LEVIER=c(TRUE)),
+             expand.grid(index=c('psi','dji','nifty50','omxc20'), start.date=as.Date("2000-01-01"), end.date=as.Date("2019-12-31"), length=0,
+                   K=c(4), LEVIER=c(TRUE)))
+
+model<-rbind(expand.grid(index=c('ftse'), start.date=as.Date("2000-01-01"), end.date=as.Date("2019-12-31"), length=0,
+                         K=c(4), LEVIER=c(TRUE)))
 
 vars<-c('loglikm','loglik', 'AIC', 'BIC', paste0("param",1:23),"conv","time")
 
@@ -439,7 +450,7 @@ colnames(model_add) <- vars
 model <- cbind(model, model_add)
 
 filename <- paste("MSRV","_all_index_",start.date,"_",end.date, sep="")
-sourceCpp('benchmarks/RealizedMS.cpp')
+sourceCpp('C:/Users/DellPC/Dropbox/Abdoul/These/Article1/Code/MDSV/Code_These/MDSV_package/MDSV/test/These/Chapitre3/benchmarks/RealizedMS.cpp')
 
 fn<-function(para_tilde,ech,K=K,LEVIER=LEVIER)
   logLik(ech=ech,para_tilde = para_tilde,K=K,LEVIER=LEVIER, Model_type = "logN")
@@ -485,11 +496,11 @@ for(i in 1:nrow(model)){
   model[i,'BIC']    <- model[i,"loglik"] - length(opt$pars)*log(length(nam_))/2
   model[i,"time"]   <- difftime(Sys.time(), start_time,units = "secs")[[1]]
   
-  write.csv(model, paste(filename,"csv",sep="."), row.names=FALSE)
+  #write.csv(model, paste(filename,"csv",sep="."), row.names=FALSE)
   print(paste("===",round(100*i/nrow(model),2) , "%" ,"==== LOGLIK = ", model[i,"loglik"], "==="))
 }
 
-write.csv(model, "Estim_ALLRealMSRV.csv", row.names=FALSE)
+write.csv(model, "Estim_ALLRealMSRV1.csv", row.names=FALSE)
 X<-matrix(unlist(model[,11:33]),nrow=nrow(model))
 
 #-------------------------------------------------------------------------------
@@ -531,14 +542,14 @@ para_name<-function(params,K,LEVIER){
 
 ctrl <- list(TOL=1e-15, trace=0)
 
-model_extern<-expand.grid(index=index_set[1], K=c(4), LEVIER=c(TRUE), n.ahead=c(100),
-                          forecast.length=c(756), refit.every=c(63), refit.window=c("recursive"),
+model_extern<-expand.grid(window = c(252, 504, 756, 1008, 1260, 1512), index=index_set, K=c(4), LEVIER=c(TRUE), n.ahead=c(100),
+                          forecast.length=c(1512), refit.every=c(21), refit.window=c("recursive"),
                           calculate.VaR=c(TRUE), rseed=1050)
 
 Loss.horizon    <- c(1,5,10,25,50,75,100)
 n.ahead         <- 100
-forecast.length <- 756
-refit.every     <- 63
+forecast.length <- 1512
+refit.every     <- 21
 refit.window    <- "recursive"
 VaR.alpha       <- c(0.01,0.05,0.10)
 rseed           <- 1050
@@ -559,17 +570,16 @@ model_extern <- cbind(model_extern, model_add)
 R_var <- rep(0,length(Loss.horizon))
 
 library(readr)
-X <- read_csv("Estim_ALLRealMSRV.csv")
 
-for(i in 1:nrow(model_extern)){
+for(i in c(1,7,13)){
   start_time <- Sys.time()
   index                        <- as.character(model_extern[i,"index"])
   donne                        <- get(index)[rownames(get(index))>=start.date & rownames(get(index))<=end.date,]
   nam_                         <- rownames(donne)
   donne[,"r"]                  <- donne[,"r"] - mean(donne[,"r"])
   donne                        <- cbind("rv"=donne[,"rv"], "r"=donne[,"r"])
-  model_extern[i,"start.date"] <- as.character(as.Date(nam_[length(nam_)])-forecast.length)
-  model_extern[i,"end.date"]   <- as.character(nam_[length(nam_)])
+  model_extern[i:(i+5),"start.date"] <- as.character(as.Date(nam_[length(nam_)])-forecast.length)
+  model_extern[i:(i+5),"end.date"]   <- as.character(nam_[length(nam_)])
   dist                         <- as.character(model_extern[i,"dist"])
   LEVIER                       <- model_extern[i,"LEVIER"]
   calculate.VaR                <- as.logical(model_extern[i,"calculate.VaR"])
@@ -589,26 +599,26 @@ for(i in 1:nrow(model_extern)){
           paste0("R_for_m",Loss.horizon),paste0("R_tru_m",Loss.horizon),
           paste0("RV_for",Loss.horizon),paste0("RV_tru",Loss.horizon),
           paste0("RV_for_m",Loss.horizon),paste0("RV_tru_m",Loss.horizon),'pred_lik','loglik', 'AIC', 'BIC',
-          paste0("param",1:19), paste0("VaR",100*(1-VaR.alpha)), 
+          paste0("param",1:23), paste0("VaR",100*(1-VaR.alpha)), 
           paste0("I",100*(1-VaR.alpha)))
   
   model_add <- matrix(0, nrow=nrow(model), ncol=length(vars))
   colnames(model_add) <- vars
   model <- cbind(model, model_add)
+  X <- read_csv("MSRV_Estim.csv")
   
-  
-  para<-para_init(LEVIER,K)
-  para_tilde<-natWork(para=para$para,Vol=para$Vol,P=para$P,K=K,LEVIER,"logN")
+  #para<-para_init(LEVIER,K)
+  #para_tilde<-natWork(para=para$para,Vol=para$Vol,P=para$P,K=K,LEVIER,"logN")
   # para_tilde <- X[i,]
-  X <- as.numeric(X[i,11:33])
+  X <- unlist(X[(X$index=='stoxx50'),6:ncol(X)])
   # X <- c(-0.42403,	0.97708, -0.10733,	0.1151,	-1.51787,	-0.44547,
   #        -1.76274,	-1.4538,	0.30502,	-2.32556,	-0.70217,	3.53387,
   #        -9.41913,	-0.10517,	-10,	3.02247,	-10,	3.11789,	-9.62701,
   #        0.104503, 0.0225187, 3.343334, 0.238355)
   
-  X <- c(0.92239,1.66738,-0.90161,-2.0886,0.26459,-1.51787,	-0.44547,
-         2.15614, -10,-10,-3.62345,3.15387,0.00935,-9.59061, 4.50915,
-         6.46873,-3.63302,-2.94299,-10, 3.343334, 0.238355, 0.104503, 0.0225187)
+  # X <- c(0.92239,1.66738,-0.90161,-2.0886,0.26459,-1.51787,	-0.44547,
+  #        2.15614, -10,-10,-3.62345,3.15387,0.00935,-9.59061, 4.50915,
+  #        6.46873,-3.63302,-2.94299,-10, 3.343334, 0.238355, 0.104503, 0.0225187)
   
   LB  = rep(-10, 5+K+K*(K-1)+2*LEVIER)#, -10, -10)
   UB  = rep(10, 5+K+K*(K-1)+2*LEVIER)#, 10, 10)
@@ -625,11 +635,10 @@ for(i in 1:nrow(model_extern)){
       if((!is.null(opt)) & !(is(opt,"try-error"))) para_tilde<-opt$pars
       oldw <- getOption("warn")
       options(warn = -1)
-      opt1 <- try(gosolnp(pars=para_tilde,fun=fn,ech=ech,LEVIER=LEVIER,K=K,control=ctrl,
-                                LB=LB,UB=UB,n.restarts=10,n.sim=2000,cluster=NULL),silent=T)
-      # opt1 <- NULL
+      # opt1 <- try(gosolnp(pars=para_tilde,fun=fn,ech=ech,LEVIER=LEVIER,K=K,control=ctrl,
+      #                           LB=LB,UB=UB,n.restarts=10,n.sim=2000,cluster=NULL),silent=T)
+      opt1 <- NULL
       opt2 <- try(solnp(pars=X,fun=fn,ech=ech,LEVIER=LEVIER,K=K,control=ctrl),silent=T)
-      # opt1 <- try(solnp(pars=para_tilde+runif(1,-10,10),fun=fn,ech=ech,LEVIER=LEVIER,K=K,control=ctrl),silent=T)
 
       if((!is.null(opt1)) & !(is(opt1,"try-error"))){
         if((!is.null(opt2)) & !(is(opt2,"try-error"))){
@@ -650,7 +659,7 @@ for(i in 1:nrow(model_extern)){
     }
     
     
-    model[t+1,colnames(model) %in% paste0("param",1:(1+K+K*(K-1)+2*LEVIER))] <- round(opt$pars,5)
+    model[t+1,colnames(model) %in% paste0("param",1:(5+K+K*(K-1)+2*LEVIER))] <- round(opt$pars,5)
     l<-logLik2(ech=ech,para_tilde=opt$pars,LEVIER=LEVIER,K=K,Model_type="logN",t=nrow(ech),
                r=donne[(length(nam_)-forecast.length+t+1),"r"])
   
@@ -747,75 +756,82 @@ for(i in 1:nrow(model_extern)){
     model[,paste0('I',100*(1-VaR.alpha[iter]))] <- (model[,'rt'] < model[,paste0('VaR',100*(1-VaR.alpha[iter]))])
   }
   
-  model_extern[i,'pred_dens'] <- sum(model[,"pred_lik"])
-  
-  for_R_var   <- model[,grep('R_for', colnames(model), fixed=TRUE)]
-  for_R_var   <- for_R_var[,-grep('R_for_m', colnames(for_R_var), fixed=TRUE)]
-  for_R_err   <- model[,grep('R_tru', colnames(model), fixed=TRUE)]
-  for_R_err   <- for_R_err[,-grep('R_tru_m', colnames(for_R_err), fixed=TRUE)]
-  model_extern[i,paste('QLIKc_R',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
-  model_extern[i,paste('RMSEc_R',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
-  model_extern[i,paste('MAEc_R',Loss.horizon)] <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
-  
-  for_R_var   <- model[,grep('R_for_m', colnames(model), fixed=TRUE)]
-  for_R_err   <- model[,grep('R_tru_m', colnames(model), fixed=TRUE)]
-  model_extern[i,paste('QLIKm_R',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
-  model_extern[i,paste('RMSEm_R',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
-  model_extern[i,paste('MAEm_R',Loss.horizon)]  <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
-  
-  for_R_var   <- model[,grep('RV_for', colnames(model), fixed=TRUE)]
-  for_R_var   <- for_R_var[,-grep('RV_for_m', colnames(for_R_var), fixed=TRUE)]
-  for_R_err   <- model[,grep('RV_tru', colnames(model), fixed=TRUE)]
-  for_R_err   <- for_R_err[,-grep('RV_tru_m', colnames(for_R_err), fixed=TRUE)]
-  model_extern[i,paste('QLIKc_RV',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
-  model_extern[i,paste('RMSEc_RV',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
-  model_extern[i,paste('MAEc_RV',Loss.horizon)] <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
-  
-  for_R_var   <- model[,grep('RV_for_m', colnames(model), fixed=TRUE)]
-  for_R_err   <- model[,grep('RV_tru_m', colnames(model), fixed=TRUE)]
-  model_extern[i,paste('QLIKm_RV',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
-  model_extern[i,paste('RMSEm_RV',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
-  model_extern[i,paste('MAEm_RV',Loss.horizon)]  <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
-  
-  LR.uc_vec <- LR.cc_vec <- LR.ind_vec <- NULL
-  p.uc_vec  <- p.cc_vec  <- p.ind_vec  <- NULL
-  
-  for(iter in 1:length(VaR.alpha)){
-    viol      <- sum(model[,paste0('I',100*(1-VaR.alpha[iter]))])
-    alpha_hat <- sum(model[,paste0('I',100*(1-VaR.alpha[iter]))])/forecast.length
-    LR.uc     <- 2*log(((alpha_hat^viol)*((1-alpha_hat)^(forecast.length-viol)))/((VaR.alpha[iter]^viol)*((1-VaR.alpha[iter])^(forecast.length-viol))))
+  for(j in 0:5){
+    window = c(252, 504, 756, 1008, 1260, 1512)[j+1]
     
-    viol      <- g(model[,paste0('I',100*(1-VaR.alpha[iter]))])
-    pi        <- (viol[1,2]+viol[2,2])/sum(viol)
-    pi0       <- (viol[1,2])/(viol[1,1]+viol[1,2])
-    pi1       <- (viol[2,2])/(viol[2,2]+viol[2,1])
-    LR.ind    <- - 2*log((((1-pi)^(viol[1,1]+viol[2,1]))*(pi^(viol[1,2]+viol[2,2])))/
-                           ((((1-pi0)^viol[1,1])*(pi0^viol[1,2]))*(((1-pi1)^viol[2,1])*(pi1^viol[2,2]))))
+    mod <- model[(1512-window+1):1512,]
+    model_extern[i+j,'pred_dens'] <- sum(mod[,"pred_lik"])
     
-    LR.uc_vec <- c(LR.uc_vec,LR.uc)
-    LR.cc_vec <- c(LR.cc_vec,LR.uc+LR.ind)
-    LR.ind_vec <- c(LR.ind_vec,LR.ind)
-    p.uc_vec <- c(p.uc_vec,1-pchisq(LR.uc,1))
-    p.cc_vec <- c(p.cc_vec,1-pchisq(LR.uc+LR.ind,2))
-    p.ind_vec <- c(p.ind_vec,1-pchisq(LR.ind,1))
+    for_R_var   <- mod[,grep('R_for', colnames(mod), fixed=TRUE)]
+    for_R_var   <- for_R_var[,-grep('R_for_m', colnames(for_R_var), fixed=TRUE)]
+    for_R_err   <- mod[,grep('R_tru', colnames(mod), fixed=TRUE)]
+    for_R_err   <- for_R_err[,-grep('R_tru_m', colnames(for_R_err), fixed=TRUE)]
+    model_extern[i+j,paste('QLIKc_R',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
+    model_extern[i+j,paste('RMSEc_R',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
+    model_extern[i+j,paste('MAEc_R',Loss.horizon)] <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
+    
+    for_R_var   <- mod[,grep('R_for_m', colnames(mod), fixed=TRUE)]
+    for_R_err   <- mod[,grep('R_tru_m', colnames(mod), fixed=TRUE)]
+    model_extern[i+j,paste('QLIKm_R',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
+    model_extern[i+j,paste('RMSEm_R',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
+    model_extern[i+j,paste('MAEm_R',Loss.horizon)]  <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
+    
+    for_R_var   <- mod[,grep('RV_for', colnames(mod), fixed=TRUE)]
+    for_R_var   <- for_R_var[,-grep('RV_for_m', colnames(for_R_var), fixed=TRUE)]
+    for_R_err   <- mod[,grep('RV_tru', colnames(mod), fixed=TRUE)]
+    for_R_err   <- for_R_err[,-grep('RV_tru_m', colnames(for_R_err), fixed=TRUE)]
+    model_extern[i+j,paste('QLIKc_RV',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
+    model_extern[i+j,paste('RMSEc_RV',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
+    model_extern[i+j,paste('MAEc_RV',Loss.horizon)] <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
+    
+    for_R_var   <- mod[,grep('RV_for_m', colnames(mod), fixed=TRUE)]
+    for_R_err   <- mod[,grep('RV_tru_m', colnames(mod), fixed=TRUE)]
+    model_extern[i+j,paste('QLIKm_RV',Loss.horizon)] <- colMeans(log(for_R_var) + for_R_err/for_R_var, na.rm=TRUE)
+    model_extern[i+j,paste('RMSEm_RV',Loss.horizon)] <- sqrt(colMeans( (for_R_var - for_R_err)^2, na.rm=TRUE ))/Loss.horizon
+    model_extern[i+j,paste('MAEm_RV',Loss.horizon)]  <- colMeans( abs(for_R_var - for_R_err), na.rm=TRUE )/Loss.horizon
+    
+    LR.uc_vec <- LR.cc_vec <- LR.ind_vec <- NULL
+    p.uc_vec  <- p.cc_vec  <- p.ind_vec  <- NULL
+    
+    for(iter in 1:length(VaR.alpha)){
+      viol      <- sum(mod[,paste0('I',100*(1-VaR.alpha[iter]))])
+      alpha_hat <- sum(mod[,paste0('I',100*(1-VaR.alpha[iter]))])/forecast.length
+      LR.uc     <- 2*log(((alpha_hat^viol)*((1-alpha_hat)^(forecast.length-viol)))/((VaR.alpha[iter]^viol)*((1-VaR.alpha[iter])^(forecast.length-viol))))
+      
+      viol      <- g(mod[,paste0('I',100*(1-VaR.alpha[iter]))])
+      pi        <- (viol[1,2]+viol[2,2])/sum(viol)
+      pi0       <- (viol[1,2])/(viol[1,1]+viol[1,2])
+      pi1       <- (viol[2,2])/(viol[2,2]+viol[2,1])
+      LR.ind    <- - 2*log((((1-pi)^(viol[1,1]+viol[2,1]))*(pi^(viol[1,2]+viol[2,2])))/
+                             ((((1-pi0)^viol[1,1])*(pi0^viol[1,2]))*(((1-pi1)^viol[2,1])*(pi1^viol[2,2]))))
+      
+      LR.uc_vec <- c(LR.uc_vec,LR.uc)
+      LR.cc_vec <- c(LR.cc_vec,LR.uc+LR.ind)
+      LR.ind_vec <- c(LR.ind_vec,LR.ind)
+      p.uc_vec <- c(p.uc_vec,1-pchisq(LR.uc,1))
+      p.cc_vec <- c(p.cc_vec,1-pchisq(LR.uc+LR.ind,2))
+      p.ind_vec <- c(p.ind_vec,1-pchisq(LR.ind,1))
+    }
+    
+    names(LR.uc_vec) <- names(LR.cc_vec) <- names(LR.ind_vec) <- paste(100*(1-VaR.alpha), "%")
+    names(p.uc_vec)  <- names(p.cc_vec)  <- names(p.ind_vec) <- paste(100*(1-VaR.alpha), "%")
+    
+    model_extern[i+j,paste('LR.uc_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.uc_vec
+    model_extern[i+j,paste('LR.ind_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.ind_vec
+    model_extern[i+j,paste('LR.cc_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.cc_vec
+    
+    model_extern[i+j,paste('LR.uc_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.uc_vec
+    model_extern[i+j,paste('LR.ind_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.ind_vec
+    model_extern[i+j,paste('LR.cc_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.cc_vec
+    
+    model_extern[i+j,"time"] <- difftime(Sys.time(), start_time,units = "secs")[[1]]
   }
-  
-  names(LR.uc_vec) <- names(LR.cc_vec) <- names(LR.ind_vec) <- paste(100*(1-VaR.alpha), "%")
-  names(p.uc_vec)  <- names(p.cc_vec)  <- names(p.ind_vec) <- paste(100*(1-VaR.alpha), "%")
-  
-  model_extern[i,paste('LR.uc_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.uc_vec
-  model_extern[i,paste('LR.ind_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.ind_vec
-  model_extern[i,paste('LR.cc_stat',100*(1-c(0.01,0.05,0.10)))] <- LR.cc_vec
-  
-  model_extern[i,paste('LR.uc_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.uc_vec
-  model_extern[i,paste('LR.ind_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.ind_vec
-  model_extern[i,paste('LR.cc_pvalue',100*(1-c(0.01,0.05,0.10)))] <- p.cc_vec
-  
-  model_extern[i,"time"] <- difftime(Sys.time(), start_time,units = "secs")[[1]]
   
   #model_extern[,c("RMSEc_RV 1","RMSEc_RV 5","RMSEc_RV 25","RMSEc_RV 100")]
   
   write.csv(model, paste(filename,"csv",sep="."), row.names=FALSE)
+  print(paste("===",round(100*i/nrow(model_extern),2) , "%" ,"===="))
+  write.csv(model_extern, "Forecast_RealMSRV.csv", row.names=FALSE)
 }
 
 write.csv(model_extern, "Forecast_RealMSRV_756.csv", row.names=FALSE)
