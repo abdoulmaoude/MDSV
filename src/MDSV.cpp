@@ -251,7 +251,11 @@ double logLik(const Eigen::Map<Eigen::VectorXd> &para_tilde,
     aj=r_dens(x,sigma).array()*jrv_dens(y,shape,mu_rv).array();
   }else if(Model_type==1){
     shape=para[5];
-    aj=(rv_dens(y*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
+    if(dis=="gamma"){
+      aj=(rv_dens(y*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
+    }else{
+      aj=(rv_dens(y-sigma.array().log(),shape,dis).array());
+    }
   }else{
     aj=r_dens(x,sigma);
   }
@@ -276,7 +280,11 @@ double logLik(const Eigen::Map<Eigen::VectorXd> &para_tilde,
     }else if(Model_type==1){
       for(int i(1); i<n;i++){
         y=ech(i,1);
-        Res=(rv_dens(y*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
+        if(dis=="gamma"){
+          Res=(rv_dens(y*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
+        }else{
+          Res=(rv_dens(y-sigma.array().log(),shape,dis).array());
+        }
         aj=(((w.transpose())*matP).array())*(Res.transpose().array());
         a=aj.sum();
         lik+=log(a);
@@ -315,7 +323,11 @@ double logLik(const Eigen::Map<Eigen::VectorXd> &para_tilde,
       for(int i(1); i<n;i++){
         y=ech(i,1);
         sigma1=sigma*Levier[i];
-        Res=(rv_dens(y*sigma1.array().inverse(),shape, dis).array())*(sigma1.array().inverse());
+        if(dis=="gamma"){
+          Res=(rv_dens(y*sigma1.array().inverse(),shape, dis).array())*(sigma1.array().inverse());
+        }else{
+          Res=(rv_dens(y-sigma1.array().log(),shape, dis).array());
+        }
         aj=(((w.transpose())*matP).array())*(Res.transpose().array());
         a=aj.sum();
         lik+=log(a);
