@@ -136,8 +136,24 @@ N         <- 2
 K         <- 3
 LEVIER    <- TRUE
 
+# vars<-c("omega","a","b","sigma","v0")
+#   if(ModelType==1) {
+#     vars <- c(vars,"shape")
+#   }else if(ModelType==2) {
+#     vars <- c(vars,"xi","varphi","delta1","delta2","shape")
+#   }
+#   if(LEVIER) {
+#     vars <- c(vars,"l","theta")
+#   }
+#   
+# tmp <- c(0.52,0.85, 2.77,sqrt(var(sp500[,1])),0.72)
+#   if(ModelType==1) tmp <- c(tmp,2.10)
+#   if(ModelType==2) tmp <- c(tmp,-1.5,	0.72,	-0.09,	0.04,	2.10)
+#   if(LEVIER)       tmp <- c(tmp,1.5,0.87568)
+#   names(tmp)           <- vars
+
 # Model estimation : univariate log-returns (ModelType = 0)
-out       <- MDSVfit(K = K, N = N, data = sp500, ModelType = 0, LEVIER = LEVIER)
+out       <- MDSVfit(K = K, N = N, data = sp500, ModelType = 0, LEVIER = LEVIER)#, start.pars=tmp)
 # Summary
 summary(out)
 # Plot

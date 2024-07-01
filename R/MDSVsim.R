@@ -72,7 +72,7 @@
 
 #' @export
 #' @importFrom mhsmm sim.mc 
-MDSVsim<-function(N, K, para, ModelType = 0, LEVIER = FALSE, n.sim = 1000, n.start = 0, m.sim = 1, rseed = NA){
+MDSVsim<-function(N, K, para, ModelType = 0, LEVIER = FALSE, n.sim = 1000, n.start = 0, m.sim = 1, rseed = NA, dis = "lognormal"){
   
   if ( (!is.numeric(N)) || (!is.numeric(K)) ) {
     stop("MDSVsim(): input N and K must all be numeric!")
@@ -201,7 +201,11 @@ MDSVsim<-function(N, K, para, ModelType = 0, LEVIER = FALSE, n.sim = 1000, n.sta
         r_t         <- r_t[(n.start+1):(n.sim+n.start)]
         tmp         <- list(r_t = r_t, RV_t = RV_t)
       }else if(ModelType == 1) {
-        RV_t        <- V_t*rgamma(n.sim+n.start,shape = para["shape"], rate = 1/para["shape"])
+        if(dis=="gamma"){
+          RV_t        <- V_t*rgamma(n.sim+n.start,shape = para["shape"], rate = 1/para["shape"])
+        }else{
+          RV_t        <- V_t*rlnorm(n.sim+n.start,meanlog=-para["shape"]/2, sdlog=sqrt(para["shape"]))
+        }
         RV_t        <- RV_t[(n.start+1):(n.sim+n.start)]
         tmp         <- list(RV_t = RV_t)
       }

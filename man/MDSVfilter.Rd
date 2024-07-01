@@ -12,7 +12,8 @@ MDSVfilter(
   ModelType = 0,
   LEVIER = FALSE,
   calculate.VaR = TRUE,
-  VaR.alpha = c(0.01, 0.05)
+  VaR.alpha = c(0.01, 0.05),
+  dis = "lognormal"
 )
 }
 \arguments{

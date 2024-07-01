@@ -13,7 +13,8 @@ MDSVsim(
   n.sim = 1000,
   n.start = 0,
   m.sim = 1,
-  rseed = NA
+  rseed = NA,
+  dis = "lognormal"
 )
 }
 \arguments{

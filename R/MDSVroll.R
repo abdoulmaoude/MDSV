@@ -110,7 +110,7 @@
 #' @importFrom Rsolnp solnp gosolnp
 #' @importFrom foreach foreach %dopar%
 #' @import doSNOW
-MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, n.ahead = 1, n.bootpred = 10000, forecast.length = 500, 
+MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahead = 1, n.bootpred = 10000, forecast.length = 500, 
                    refit.every = 25, refit.window = "recursive", window.size = NULL, 
                    calculate.VaR = TRUE, VaR.alpha = c(0.01, 0.05), cluster = NULL, rseed = NA, ...){
   
@@ -437,9 +437,9 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, n.ahead = 1, n.bootpre
         
         if(!is.null(para)){
           if(!is.null(opt)) para_tilde<-opt$pars
-          opt<-try(solnp(pars=para_tilde,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,control=ctrl),silent=T)
+          opt<-try(solnp(pars=para_tilde,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis,control=ctrl),silent=T)
         }else{
-          opt<-try(gosolnp(pars=NULL,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,control=ctrl,
+          opt<-try(gosolnp(pars=NULL,fun=function(x) logLik(x,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis),control=ctrl,
                            LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim,cluster=cluster),silent=T)
         }
         if (class(opt) =='try-error'){
@@ -453,7 +453,7 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, n.ahead = 1, n.bootpre
       
       model[t+1,vars] <- round(para,5)
       if(!(ModelType == 1)){
-        l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),r=model[t+1,"rt"], Model_type = ModelType)
+        l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),dis=dis,r=model[t+1,"rt"], Model_type = ModelType)
         
         pi_0 <- l$w_hat
         sig  <- volatilityVector(para=para,N=N,K=K)
@@ -473,7 +473,7 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, n.ahead = 1, n.bootpre
         }
         
       }else{
-        l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),r=model[t+1,"rvt"], Model_type = ModelType)
+        l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),dis=dis,r=model[t+1,"rvt"], Model_type = ModelType)
       }
       
       model[t+1,"loglik"]         <- -as.numeric(opt$values[length(opt$values)])
@@ -509,9 +509,9 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, n.ahead = 1, n.bootpre
       options(warn = -1)
       if(!is.null(para)){
         if(!is.null(opt)) para_tilde<-opt$pars
-        opt<-solnp(pars=para_tilde,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,control=ctrl)
+        opt<-solnp(pars=para_tilde,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis,control=ctrl)
       }else{
-        opt<-gosolnp(pars=NULL,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,control=ctrl,
+        opt<-gosolnp(pars=NULL,fun=function(x) logLik(x,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis),control=ctrl,
                          LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim)
       }
       options(warn = oldw)
@@ -520,7 +520,7 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, n.ahead = 1, n.bootpre
        
      model[t+1,vars] <- round(para,5)
      if(!(ModelType == 1)){
-       l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),r=model[t+1,"rt"], Model_type = ModelType)
+       l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),r=model[t+1,"rt"], Model_type = ModelType,dis=dis)
        
        pi_0 <- l$w_hat
        sig  <- volatilityVector(para=para,N=N,K=K)
@@ -539,7 +539,7 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, n.ahead = 1, n.bootpre
          }
        }
      }else{
-       l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),r=model[t+1,"rvt"], Model_type = ModelType)
+       l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),r=model[t+1,"rvt"], Model_type = ModelType,dis=dis)
      }
      
      model[t+1,"loglik"]         <- -as.numeric(opt$values[length(opt$values)])
@@ -572,7 +572,7 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, n.ahead = 1, n.bootpre
       
       model[t+1,vars] <- round(para,5)
       if(!(ModelType == 1)){
-        l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),r=model[t+1,"rt"], Model_type = ModelType)
+        l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),r=model[t+1,"rt"], Model_type = ModelType,dis=dis)
         
         pi_0 <- l$w_hat
         sig  <- volatilityVector(para=para,N=N,K=K)
@@ -591,7 +591,7 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, n.ahead = 1, n.bootpre
           }
         }
       }else{
-        l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),r=model[t+1,"rvt"], Model_type = ModelType)
+        l    <- logLik2(ech=ech,para=para,LEVIER=LEVIER,K=K,N=N,t=nrow(ech),r=model[t+1,"rvt"], Model_type = ModelType,dis=dis)
       }
       
       model[t+1,"loglik"]         <- -l$loglik
@@ -654,7 +654,7 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, n.ahead = 1, n.bootpre
       ech    <- data[strt:(T-forecast.length+t-1),]
       
       para <- unlist(model[t, vars])
-      l    <- logLik2(ech=ech, para=para, Model_type=ModelType, LEVIER=LEVIER, K=K, N=N, t=nrow(ech))
+      l    <- logLik2(ech=ech, para=para, Model_type=ModelType, LEVIER=LEVIER, K=K, N=N, t=nrow(ech), dis=dis)
       
       pi_0 <- l$w_hat
       if(t %in% update_date+1){
@@ -722,7 +722,7 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, n.ahead = 1, n.bootpre
       ech    <- data[strt:(T-forecast.length+t-1),]
               
       para <- unlist(model[t, vars])
-      l<-logLik2(ech=ech, para=para, Model_type=ModelType, LEVIER=LEVIER, K=K, N=N,t=nrow(ech))
+      l<-logLik2(ech=ech, para=para, Model_type=ModelType, LEVIER=LEVIER, K=K, N=N,t=nrow(ech), dis=dis)
       
       pi_0 <- l$w_hat
       if(t %in% update_date+1){

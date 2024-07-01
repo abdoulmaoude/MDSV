@@ -4,7 +4,16 @@
 \alias{MDSVfit}
 \title{MDSV Fitting}
 \usage{
-MDSVfit(N, K, data, ModelType = 0, LEVIER = FALSE, start.pars = list(), ...)
+MDSVfit(
+  N,
+  K,
+  data,
+  ModelType = 0,
+  LEVIER = FALSE,
+  start.pars = list(),
+  dis = "lognormal",
+  ...
+)
 }
 \arguments{
 \item{N}{An integer designing the number of components for the MDSV process}

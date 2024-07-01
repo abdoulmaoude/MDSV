@@ -407,7 +407,11 @@ Rcpp::List logLik2(const Eigen::MatrixXd &ech,
     likm=log(ajm.sum());
   }else if(Model_type==1){
     shape=para[5];
-    aj=(rv_dens(y*sigma.array().inverse(),shape, dis).array())*(sigma.array().inverse());
+    if(dis=="gamma"){
+      aj=(rv_dens(y*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
+    }else{
+      aj=(rv_dens(y-sigma.array().log(),shape,dis).array());
+    }
   }else{
     aj=r_dens(x,sigma);
   }
@@ -442,14 +446,22 @@ Rcpp::List logLik2(const Eigen::MatrixXd &ech,
     }else if(Model_type==1){
       for(int i(1); i<n;i++){
         y=ech(i,1);
-        Res=(rv_dens(y*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
+        if(dis=="gamma"){
+          Res=(rv_dens(y*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
+        }else{
+          Res=(rv_dens(y-sigma.array().log(),shape,dis).array());
+        }
         aj=(((w.transpose())*matP).array())*(Res.transpose().array());
         a=aj.sum();
         lik+=log(a);
         w=aj/a;
         proba1.col(i) = w;
       }
-      Res=(rv_dens(r*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
+      if(dis=="gamma"){
+        Res=(rv_dens(r*sigma.array().inverse(),shape,dis).array())*(sigma.array().inverse());
+      }else{
+        Res=(rv_dens(r-sigma.array().log(),shape,dis).array());
+      }
       aj=(((w.transpose())*matP).array())*(Res.transpose().array());
       a=aj.sum();
       pred_lik=log(a);
@@ -502,7 +514,11 @@ Rcpp::List logLik2(const Eigen::MatrixXd &ech,
       for(int i(1); i<n;i++){
         y=ech(i,1);
         sigma1=sigma*Levier[i];
-        Res=(rv_dens(y*sigma1.array().inverse(),shape,dis).array())*(sigma1.array().inverse());
+        if(dis=="gamma"){
+          Res=(rv_dens(y*sigma1.array().inverse(),shape,dis).array())*(sigma1.array().inverse());
+        }else{
+          Res=(rv_dens(y-sigma1.array().log(),shape,dis).array());
+        }
         aj=(((w.transpose())*matP).array())*(Res.transpose().array());
         a=aj.sum();
         lik+=log(a);
@@ -511,7 +527,11 @@ Rcpp::List logLik2(const Eigen::MatrixXd &ech,
       }
       double levier=L["levier"];
       sigma1=sigma*levier;
-      Res=(rv_dens(r*sigma1.array().inverse(),shape,dis).array())*(sigma1.array().inverse());
+      if(dis=="gamma"){
+        Res=(rv_dens(r*sigma1.array().inverse(),shape,dis).array())*(sigma1.array().inverse());
+      }else{
+        Res=(rv_dens(r-sigma1.array().log(),shape,dis).array());
+      }
       aj=(((w.transpose())*matP).array())*(Res.transpose().array());
       a=aj.sum();
       pred_lik=log(a);

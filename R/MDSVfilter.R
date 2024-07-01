@@ -107,7 +107,7 @@
 #' @import Rcpp
 #' @import KScorrect
 #' @export
-MDSVfilter<-function(N,K,data,para,ModelType=0,LEVIER=FALSE, calculate.VaR = TRUE, VaR.alpha = c(0.01, 0.05)){
+MDSVfilter<-function(N,K,data,para,ModelType=0,LEVIER=FALSE, calculate.VaR = TRUE, VaR.alpha = c(0.01, 0.05), dis="lognormal"){
   
   if ( (!is.numeric(N)) || (!is.numeric(K)) ) {
     stop("MDSVfilter(): input N and K must be numeric!")
@@ -215,7 +215,7 @@ MDSVfilter<-function(N,K,data,para,ModelType=0,LEVIER=FALSE, calculate.VaR = TRU
     stop("MDSVfilter(): data second colomn must be positive!")
   }
   
-  l<-logLik2(ech=data, para=para, Model_type=ModelType, LEVIER=LEVIER, K=K, N=N)
+  l<-logLik2(ech=data, para=para, Model_type=ModelType, LEVIER=LEVIER, K=K, N=N, dis=dis)
   if(!(ModelType==1)){
     pi_0 <- l$w_hat
     sig<- volatilityVector(para=para,N=N,K=K)

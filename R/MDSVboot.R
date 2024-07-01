@@ -108,6 +108,7 @@ MDSVboot<-function(fit,n.ahead=100,n.bootpred=500,rseed=NA){
   N         <- fit$N
   K         <- fit$K
   LEVIER    <- fit$LEVIER
+  dis       <- fit$dis
   data      <- as.matrix(fit$data)
   
   k <- ncol(data)
@@ -123,7 +124,7 @@ MDSVboot<-function(fit,n.ahead=100,n.bootpred=500,rseed=NA){
                    n.ahead    = n.ahead,
                    n.bootpred = n.bootpred))
   
-  l<-logLik2(ech=data, para=para, Model_type=ModelType, LEVIER=LEVIER, K=K, N=N, t=T)
+  l<-logLik2(ech=data, para=para, Model_type=ModelType, LEVIER=LEVIER, K=K, N=N, t=T, dis=dis)
   
   pi_0 <- l$w_hat
   sig  <- volatilityVector(para=para,K=K,N=N)

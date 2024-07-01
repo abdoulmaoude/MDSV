@@ -10,6 +10,7 @@ MDSVroll(
   data,
   ModelType = 0,
   LEVIER = FALSE,
+  dis = "lognormal",
   n.ahead = 1,
   n.bootpred = 10000,
   forecast.length = 500,

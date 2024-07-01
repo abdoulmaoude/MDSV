@@ -82,7 +82,7 @@
 #' @export
 #' @import Rcpp
 #' @importFrom Rsolnp solnp gosolnp
-MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){ 
+MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),dis="lognormal",...){ 
   
   if ( (!is.numeric(N)) || (!is.numeric(K)) ) {
     stop("MDSVfit() ERROR: input N and K must be numeric!")
@@ -325,16 +325,16 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
   if(!is.null(para)){
     para_tilde <- natWork(para=para,LEVIER=LEVIER,Model_type=ModelType)
     if(is.null(fixed.pars)){
-      opt<-try(solnp(pars=para_tilde,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,control=ctrl),silent=T)
+      opt<-try(solnp(pars=para_tilde,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis,control=ctrl),silent=T)
     }else{
-      opt<-try(solnp(pars=para_tilde,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,fixed_pars=fixed.pars,fixed_values=fixed.values,control=ctrl),silent=T)
+      opt<-try(solnp(pars=para_tilde,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis,fixed_pars=fixed.pars,fixed_values=fixed.values,control=ctrl),silent=T)
     }
   }else{
     if(is.null(fixed.pars)){
-      opt<-try(gosolnp(pars=NULL,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,control=ctrl,
+      opt<-try(gosolnp(pars=NULL,fun=function(x) logLik(x,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis),control=ctrl,
                        LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim,cluster=cluster),silent=T)
     }else{
-      opt<-try(gosolnp(pars=NULL,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,
+      opt<-try(gosolnp(pars=NULL,fun=function(x) logLik(ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis),
                        fixed.pars=fixed.pars, fixed.values=fixed.values,control=ctrl,
                        LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim,cluster=cluster),silent=T)
     }
@@ -378,6 +378,7 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
             LogLikelihood = -as.numeric(opt$values[length(opt$values)]),
             AIC           = -as.numeric(opt$values[length(opt$values)])-length(params), 
             BIC           = -as.numeric(opt$values[length(opt$values)])-0.5*length(params)*log(T),
+            dis           = dis,
             data          = data)
   
   class(out) <- "MDSVfit"
@@ -502,6 +503,7 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
                          sig         = sig,
                          prob        = prob,
                          data        = x$data,
+                         dis         = x$dis,
                          plot.type   = plot.type)
   
   if (is.null(match.call()$mfrow)) {
@@ -533,6 +535,7 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
   para        <- x$estimates
   sig         <- x$sig
   prob        <- x$prob
+  dis         <- x$dis
   data        <- as.matrix(x$data)
   plot.type   <- x$plot.type
   
@@ -551,7 +554,7 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),...){
     do.call("plot", tmp)
   }
   if("nic" %in% plot.type){
-    temp      <- logLik2(ech=data, para=para, Model_type=ModelType, LEVIER=LEVIER, K=K, N=N)
+    temp      <- logLik2(ech=data, para=para, Model_type=ModelType, LEVIER=LEVIER, K=K, N=N, dis=dis)
     proba_lis <- temp$smoothed_proba
     
     n<-nrow(data)
