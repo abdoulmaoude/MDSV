@@ -134,40 +134,50 @@ data(sp500)
 sp500     <- sp500[rownames(sp500)>=start.date & rownames(sp500)<=end.date,]
 N         <- 2
 K         <- 3
+ModelType <- 0
 LEVIER    <- TRUE
 
-# vars<-c("omega","a","b","sigma","v0")
-#   if(ModelType==1) {
-#     vars <- c(vars,"shape")
-#   }else if(ModelType==2) {
-#     vars <- c(vars,"xi","varphi","delta1","delta2","shape")
-#   }
-#   if(LEVIER) {
-#     vars <- c(vars,"l","theta")
-#   }
-#   
-# tmp <- c(0.52,0.85, 2.77,sqrt(var(sp500[,1])),0.72)
-#   if(ModelType==1) tmp <- c(tmp,2.10)
-#   if(ModelType==2) tmp <- c(tmp,-1.5,	0.72,	-0.09,	0.04,	2.10)
-#   if(LEVIER)       tmp <- c(tmp,1.5,0.87568)
-#   names(tmp)           <- vars
+vars<-c("omega","a","b","sigma","v0")
+
+tmp <- c(0.52,0.85, 2.77,sqrt(var(sp500[,1])),0.72)
+if(LEVIER) {
+  vars <- c(vars,"l","theta")
+  tmp <- c(tmp,1.5,0.87568)
+}
+names(tmp) <- vars
 
 # Model estimation : univariate log-returns (ModelType = 0)
-out       <- MDSVfit(K = K, N = N, data = sp500, ModelType = 0, LEVIER = LEVIER)#, start.pars=tmp)
+out       <- MDSVfit(K = K, N = N, data = sp500, ModelType = 0, LEVIER = LEVIER, start.pars=tmp)
 # Summary
 summary(out)
 # Plot
 plot(out,c("nic"))
 
+vars <- c("omega","a","b","sigma","v0","shape")
+tmp <- c(0.52,0.85, 2.77,sqrt(var(sp500[,1])),0.72,2.10)
+if(LEVIER) {
+  vars <- c(vars,"l","theta")
+  tmp <- c(tmp,1.5,0.87568)
+}
+names(tmp) <- vars
+
 # Model estimation : univariate realized variances (ModelType = 1) without leverage
-out       <- MDSVfit(K = K, N = N, data = sp500, ModelType = 1, LEVIER = FALSE)
+out       <- MDSVfit(K = K, N = N, data = sp500, ModelType = 1, LEVIER = FALSE, start.pars=tmp)
 # Summary
 summary(out)
 # Plot
 plot(out,c("dis"))
 
+vars <- c("omega","a","b","sigma","v0","xi","varphi","delta1","delta2","shape")
+tmp <- c(0.52,0.85, 2.77,sqrt(var(sp500[,1])),0.72,-1.5,	0.72,	-0.09,	0.04,	2.10)
+if(LEVIER) {
+  vars <- c(vars,"l","theta")
+  tmp <- c(tmp,1.5,0.87568)
+}
+names(tmp) <- vars
+
 # Model estimation : joint model (ModelType = 2)
-out       <- MDSVfit(K = K, N = N, data = sp500, ModelType = 2, LEVIER = LEVIER)
+out       <- MDSVfit(K = K, N = N, data = sp500, ModelType = 2, LEVIER = LEVIER, start.pars=tmp)
 # Summary
 summary(out)
 # Plot
@@ -228,19 +238,42 @@ K         <- 3
 LEVIER    <- TRUE
 
 # Model forecasting : univariate log-returns (ModelType = 0) without leverage
-out_fit   <- MDSVfit(K = K, N = N, data = sp500, ModelType = 0, LEVIER = FALSE)
+vars<-c("omega","a","b","sigma","v0")
+
+tmp <- c(0.52,0.85, 2.77,sqrt(var(sp500[,1])),0.72)
+if(LEVIER) {
+  vars <- c(vars,"l","theta")
+  tmp <- c(tmp,1.5,0.87568)
+}
+names(tmp) <- vars
+out_fit   <- MDSVfit(K = K, N = N, data = sp500, ModelType = 0, LEVIER = FALSE, start.pars = tmp)
 out       <- MDSVboot(fit = out_fit, n.ahead = 100, n.bootpred = 10000, rseed = 349)
 # Summary
 summary(out)
 
 # Model forecasting : univariate realized variances (ModelType = 1) without leverage
-out_fit   <- MDSVfit(K = K, N = N, data = sp500, ModelType = 1, LEVIER = FALSE)
+vars <- c("omega","a","b","sigma","v0","shape")
+tmp <- c(0.52,0.85, 2.77,sqrt(var(sp500[,1])),0.72,2.10)
+if(LEVIER) {
+  vars <- c(vars,"l","theta")
+  tmp <- c(tmp,1.5,0.87568)
+}
+names(tmp) <- vars
+out_fit   <- MDSVfit(K = K, N = N, data = sp500, ModelType = 1, LEVIER = FALSE, start.pars = tmp)
 out       <- MDSVboot(fit = out_fit, n.ahead = 100, n.bootpred = 10000, rseed = 349)
 # Summary
 summary(out)
 
 # Model bootstrap forecasting : joint model (ModelType = 2) with leverage
-out_fit   <- MDSVfit(K = K, N = N, data = sp500, ModelType = 2, LEVIER = LEVIER)
+vars <- c("omega","a","b","sigma","v0","xi","varphi","delta1","delta2","shape")
+tmp <- c(0.52,0.85, 2.77,sqrt(var(sp500[,1])),0.72,-1.5,	0.72,	-0.09,	0.04,	2.10)
+if(LEVIER) {
+  vars <- c(vars,"l","theta")
+  tmp <- c(tmp,1.5,0.87568)
+}
+names(tmp) <- vars
+
+out_fit   <- MDSVfit(K = K, N = N, data = sp500, ModelType = 2, LEVIER = LEVIER, start.pars = tmp)
 out       <- MDSVboot(fit = out_fit, n.ahead = 100, n.bootpred = 10000, rseed = 349)
 # Summary
 summary(out)

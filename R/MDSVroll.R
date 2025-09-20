@@ -117,17 +117,17 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
   if ( (!is.numeric(N)) || (!is.numeric(K)) ) {
     stop("MDSVroll(): input N and K must all be numeric!")
   }else if(!(N%%1==0) || !(K%%1==0)){
-    stop("MDSVfit(): input N and K must all be integer!")
+    stop("MDSVroll(): input N and K must all be integer!")
   }else if(K<2){
-    stop("MDSVfit(): input K must be greater than one!")
+    stop("MDSVroll(): input K must be greater than one!")
   }else if(N<1){
-    stop("MDSVfit(): input N must be positive!")
+    stop("MDSVroll(): input N must be positive!")
   }
   
   if(!is.numeric(ModelType)) {
     stop("MDSVroll(): input ModelType must be numeric!")
   }else if(!(ModelType %in% c(0,1,2))){
-    stop("MDSVfit(): input ModelType must be 0, 1 or 2!")
+    stop("MDSVroll(): input ModelType must be 0, 1 or 2!")
   }
   
   if ( (!is.numeric(data)) || (!is.matrix(data))  ) {
@@ -162,9 +162,9 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
        (!is.numeric(refit.every)) || (!is.numeric(n.bootpred)) ) {
     stop("MDSVroll(): inputs n.ahead, forecast.length, refit.every and n.bootpred must all be numeric!")
   }else if(!(n.ahead%%1==0) || !(forecast.length%%1==0) || !(refit.every%%1==0) || !(n.bootpred%%1==0)){
-    stop("MDSVfit(): input n.ahead, forecast.length, refit.every and n.bootpred must all be integer!")
+    stop("MDSVroll(): input n.ahead, forecast.length, refit.every and n.bootpred must all be integer!")
   }else if((n.ahead<1) || (forecast.length<1) || (refit.every<1) || (n.bootpred<1)){
-    stop("MDSVfit(): input n.ahead, forecast.length, refit.every and n.bootpred must all be positive!")
+    stop("MDSVroll(): input n.ahead, forecast.length, refit.every and n.bootpred must all be positive!")
   }
   
   if(forecast.length < refit.every){
@@ -189,9 +189,9 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
     stop("MDSVroll(): input window.size must be numeric or set to NULL!")
   }
   if(is.numeric(window.size)) if(!(window.size%%1==0)){
-    stop("MDSVfit(): input window.size must be integer!")
+    stop("MDSVroll(): input window.size must be integer!")
   }else if(window.size<1){
-    stop("MDSVfit(): input window.size must be positive!")
+    stop("MDSVroll(): input window.size must be positive!")
   }
   
   if ( (!is.null(cluster)) & (!("cluster" %in% class(cluster))) ) {
@@ -309,7 +309,7 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
     if((length(ctrls$LB)==length(vars)) & is.numeric(ctrls$LB)){
       LB<-ctrls$LB
     }else{
-      print("MDSVfit() WARNING: Incorrect Lower Bound! set to default.")
+      print("MDSVroll() WARNING: Incorrect Lower Bound! set to default.")
     }
   }
   
@@ -317,7 +317,7 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
     if((length(ctrls$UB)==length(vars)) & is.numeric(ctrls$UB)){
       UB<-ctrls$UB
     }else{
-      print("MDSVfit() WARNING: Incorrect Upper Bound! set to default.")
+      print("MDSVroll() WARNING: Incorrect Upper Bound! set to default.")
     }
   }
   
@@ -325,11 +325,11 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
     if(is.numeric(ctrls$n.restarts)){
       n.restarts<-ctrls$n.restarts
       if(!(n.restarts%%1==0)){
-        print("MDSVfit() WARNING: Incorrect n.restarts! set to 1.")
+        print("MDSVroll() WARNING: Incorrect n.restarts! set to 1.")
         n.restarts<-1
       }
     }else{
-      print("MDSVfit() WARNING: Incorrect n.restarts! set to 1.")
+      print("MDSVroll() WARNING: Incorrect n.restarts! set to 1.")
       n.restarts<-1
     }
   }else{
@@ -340,15 +340,60 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
     if(is.numeric(ctrls$n.sim)){
       n.sim<-ctrls$n.sim
       if(!(n.sim%%1==0)){
-        print("MDSVfit() WARNING: Incorrect n.sim! set to 200.")
+        print("MDSVroll() WARNING: Incorrect n.sim! set to 200.")
         n.sim<-200
       }
     }else{
-      print("MDSVfit() WARNING: Incorrect n.sim! set to 200.")
+      print("MDSVroll() WARNING: Incorrect n.sim! set to 200.")
       n.sim<-200
     }
   }else{
     n.sim<-200
+  }
+  
+  if("fixed.pars" %in% names(ctrls)){
+    fixed.pars <- ctrls$fixed.pars
+    if (!is.numeric(fixed.pars)) {
+      stop("MDSVroll() ERROR: input fixed.pars must be numeric and containt the position of the fixed parameters!")
+    }else if(!(sum(fixed.pars%%1)==0)){
+      stop("MDSVroll() ERROR: input fixed.pars must be integers!")
+    }else if(length(fixed.pars) > length(vars)){
+      stop(paste("MDSVroll() ERROR: input fixed.pars must have a length less than ", length(vars), " !"))
+    }
+    if(!("fixed.values" %in% names(ctrls))){
+      stop(paste("MDSVroll() ERROR: input fixed.values is missing!"))
+    }else{
+      fixed.values <- ctrls$fixed.values
+      if((length(fixed.values) == 1)){
+        fixed.values <- rep(fixed.values, length(fixed.pars) )
+      }else if(!(length(fixed.pars) == length(fixed.values))){
+        stop(paste("MDSVroll() ERROR: input fixed.values must have a length of ", length(fixed.pars), " !"))
+      }
+    } 
+  }else{
+    fixed.pars <- NULL
+    fixed.values <- NULL
+  }
+  
+  if(!is.null(fixed.pars)){
+    names(fixed.values) <- vars[fixed.pars]
+    if(("omega" %in% names(fixed.values)) & ((fixed.values["omega"]>1) || (fixed.values["omega"]<0))){
+      stop("MDSVroll() ERROR: Incorrect fixed.values! omega must be between 0 and 1.")
+    }else if(("a" %in% names(fixed.values)) & ((fixed.values["a"]>1) || (fixed.values["a"]<0))){
+      stop("MDSVroll() ERROR: Incorrect fixed.values! a must be between 0 and 1.")
+    }else if(("b" %in% names(fixed.values)) & (fixed.values["b"]<=1)){
+      stop("MDSVroll() ERROR: Incorrect fixed.values! b must be greater than 1.")
+    }else if(("v0" %in% names(fixed.values)) & ((fixed.values["v0"]>1) || (fixed.values["v0"]<0))){
+      stop("MDSVroll() ERROR: Incorrect fixed.values! v0 must be between 0 and 1.")
+    }else if(("sigma" %in% names(fixed.values)) & (fixed.values["sigma"]<=0)){
+      stop("MDSVroll() ERROR: Incorrect fixed.values! sigma must be positive.")
+    }else if(("shape" %in% names(fixed.values)) & (fixed.values["shape"]<=0)){
+      stop("MDSVroll() ERROR: Incorrect fixed.values! shape must be positive.")
+    }else if(("l" %in% names(fixed.values)) & (fixed.values["l"]<=0)){
+      stop("MDSVroll() ERROR: Incorrect fixed.values! l must be positive.")
+    }else if(("theta" %in% names(fixed.values)) & ((fixed.values["theta"]>1) || (fixed.values["theta"]<0))){
+      stop("MDSVroll() ERROR: Incorrect fixed.values! theta must be between 0 and 1.")
+    }
   }
   
   tmp <- c(0.52,0.99, 2.77,sqrt(var(data[,1])),0.72)
@@ -371,7 +416,7 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
     if(!is.null(names(start.pars))){
       para <- start.pars[vars]
       if(!(sum(is.na(para))==0)){
-        print("MDSVfit() WARNING: Incorrect start.pars! set to default.")
+        print("MDSVroll() WARNING: Incorrect start.pars! set to default.")
         nam_       <- names(para)[is.na(para)]
         para[nam_] <- tmp[nam_]
       }
@@ -382,32 +427,32 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
         
         if((para["omega"]>1) || (para["omega"]<0) || (para["a"]>1) || (para["a"]<0) || (para["b"]<=1) ||
            (para["sigma"]<=0) || (para["v0"]>1) || (para["v0"]<0)) {
-          print("MDSVfit() WARNING: Incorrect start.pars! set to default.")
+          print("MDSVroll() WARNING: Incorrect start.pars! set to default.")
           para <- NULL
         }else if(((ModelType==1) & (para["shape"]<=0)) || ((ModelType==2) & (para[10]<=0))){
-          print("MDSVfit() WARNING: Incorrect start.pars! set to default.")
+          print("MDSVroll() WARNING: Incorrect start.pars! set to default.")
           para <- NULL
         }else if(LEVIER){
           if(ModelType==0){
             if( (para[6]<0) || (para[7]>1) || (para[7]<0) ){
-              print("MDSVfit() WARNING: Incorrect start.pars! set to default.")
+              print("MDSVroll() WARNING: Incorrect start.pars! set to default.")
               para <- NULL
             }
           }else if(ModelType==1){
             if((para[7]<=0) || (para[8]>1) || (para[8]<0)){
-              print("MDSVfit() WARNING: Incorrect start.pars! set to default.")
+              print("MDSVroll() WARNING: Incorrect start.pars! set to default.")
               para <- NULL
             }
           }else if(ModelType==2){
             if((para[11]<=0) || (para[12]>1) || (para[12]<0)){
-              print("MDSVfit() WARNING: Incorrect start.pars! set to default.")
+              print("MDSVroll() WARNING: Incorrect start.pars! set to default.")
               para <- NULL
             }
           }
         }
         
       }else{
-        print("MDSVfit() WARNING: Incorrect start.pars! set to default.")
+        print("MDSVroll() WARNING: Incorrect start.pars! set to default.")
         para <- NULL
       }
     }
@@ -415,7 +460,12 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
     para <- NULL
   }
   
+  
+  
   if(!is.null(para)){
+    if(!is.null(fixed.pars)){
+      para[fixed.pars] = fixed.values
+    }
     para_tilde <- natWork(para=para,LEVIER=LEVIER,Model_type=ModelType)
   }
   
@@ -437,15 +487,24 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
         
         if(!is.null(para)){
           if(!is.null(opt)) para_tilde<-opt$pars
-          opt<-try(solnp(pars=para_tilde,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis,control=ctrl),silent=T)
+          if(is.null(fixed.pars)){
+            opt<-try(solnp(pars=para_tilde,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis,control=ctrl),silent=T)
+          }else{
+            opt<-try(solnp(pars=para_tilde,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis,fixed_pars=fixed.pars,fixed_values=fixed.values,control=ctrl),silent=T)
+          }
         }else{
-          opt<-try(gosolnp(pars=NULL,fun=function(x) logLik(x,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis),control=ctrl,
-                           LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim,cluster=cluster),silent=T)
+          if(is.null(fixed.pars)){
+            opt<-try(gosolnp(pars=NULL,fun=function(x) logLik(x,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis),control=ctrl,
+                             LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim,cluster=cluster),silent=T)
+          }else{
+            opt<-try(gosolnp(pars=NULL,fun=function(x) logLik(x,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,fixed_pars=fixed.pars,fixed_values=fixed.values,dis=dis),control=ctrl,
+                             LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim,cluster=cluster),silent=T)
+          }
         }
         if (class(opt) =='try-error'){
           stop("MDSVroll(): Optimization ERROR")
         }
-        para <- workNat(opt$pars,LEVIER=LEVIER,Model_type=ModelType)
+        para <- workNat(opt$pars,LEVIER=LEVIER,Model_type=ModelType,fixed_pars=fixed.pars,fixed_values=fixed.values)
         
         if(refit.window == "moving") strt <- strt + refit.every
       }
@@ -509,14 +568,24 @@ MDSVroll<-function(N, K, data, ModelType=0, LEVIER=FALSE, dis="lognormal", n.ahe
       options(warn = -1)
       if(!is.null(para)){
         if(!is.null(opt)) para_tilde<-opt$pars
-        opt<-solnp(pars=para_tilde,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis,control=ctrl)
+        if(is.null(fixed.pars)){
+          opt<-solnp(pars=para_tilde,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis,control=ctrl)
+        }else{
+          opt<-solnp(pars=para_tilde,fun=logLik,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis,fixed_pars=fixed.pars,fixed_values=fixed.values,control=ctrl)
+        }
       }else{
-        opt<-gosolnp(pars=NULL,fun=function(x) logLik(x,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis),control=ctrl,
-                         LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim)
+        if(is.null(fixed.pars)){
+          opt<-gosolnp(pars=NULL,fun=function(x) logLik(x,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis),control=ctrl,
+                       LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim)
+        }else{
+          opt<-gosolnp(pars=NULL,fun=function(x) logLik(x,ech=ech,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,fixed_pars=fixed.pars,fixed_values=fixed.values,dis=dis),control=ctrl,
+                       LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim)
+        }
+        
       }
       options(warn = oldw)
       
-      para <- workNat(opt$pars,LEVIER=LEVIER,Model_type=ModelType)
+      para <- workNat(opt$pars,LEVIER=LEVIER,Model_type=ModelType,fixed_pars=fixed.pars,fixed_values=fixed.values)
        
      model[t+1,vars] <- round(para,5)
      if(!(ModelType == 1)){

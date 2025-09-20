@@ -80,8 +80,8 @@
 #' }
 
 #' @export
-#' @import Rcpp
-#' @importFrom Rsolnp solnp gosolnp
+#' @import Rcpp DEoptim
+#' @importFrom Rsolnp solnp gosolnp 
 MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),dis="lognormal",...){ 
   
   if ( (!is.numeric(N)) || (!is.numeric(K)) ) {
@@ -127,7 +127,7 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),dis="logno
   ### Some constants
   ctrls <- list(... = ...)
   ctrl  <- NULL
-  if(!("control" %in% names(ctrls))) ctrl<-ctrls$control
+  if("control" %in% names(ctrls)) ctrl<-ctrls$control
   if(!("TOL" %in% names(ctrls))){
     ctrl<-c(ctrl, list(TOL=1e-15))
   }else{
@@ -148,21 +148,21 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),dis="logno
   }
   
   vars<-c("omega","a","b","sigma","v0")
-  LB<-rep(-10,5)
-  UB<-rep(10,5)
+  LB<-c(-0.57564,-9.210240,-4.60517,-4.60517,-1.15128)
+  UB<-c(1.14878,0,3.891820,5.298317,4.59512)
   if(ModelType==1) {
     vars <- c(vars,"shape")
-    LB<-c(LB,-10)
-    UB<-c(UB,10)
+    LB<-c(LB,-4.60517)
+    UB<-c(UB,5.298317)
   }else if(ModelType==2) {
     vars <- c(vars,"xi","varphi","delta1","delta2","shape")
-    LB<-c(LB,rep(-2.5,4),-10.5)
-    UB<-c(UB,rep(2.5,4),10.5)
+    LB<-c(LB,rep(-2.5,4),-4.60517)
+    UB<-c(UB,rep(2.5,4),5.298317)
   }
   if(LEVIER) {
     vars <- c(vars,"l","theta")
-    LB<-c(LB,-10.5,-10.5)
-    UB<-c(UB,10.5,10.5)
+    LB<-c(LB,-4.60517,-4.60517)
+    UB<-c(UB,5.298317,4.59512)
   }
   
   if("LB" %in% names(ctrls)){
@@ -266,7 +266,35 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),dis="logno
       }
   }
   
-  tmp <- c(0.52,0.85, 2.77,sqrt(var(data[,1])),0.72)
+  DEsolnp <- function(fun, LB, UB, controlDE = list(), controlSolnp = list(),
+                      fixed.pars = NULL, fixed.values = NULL, ...) {
+    
+    # 1. Global optimization with DEoptim
+    de.ctrl <- modifyList(list(NP = 50, itermax = 100, trace = FALSE), controlDE)
+    de.res <- DEoptim(fn = fun,
+                      lower = LB,
+                      upper = UB,
+                      control = do.call(DEoptim.control, de.ctrl),
+                      ...)
+    
+    best.pars <- de.res$optim$bestmem
+    best.val  <- de.res$optim$bestval
+    
+    # 2. Local refinement with solnp
+    sol.res <- tryCatch({
+      if (is.null(fixed.pars)) {
+        solnp(pars = best.pars, fun = fun, control = controlSolnp, ...)
+      } else {
+        solnp(pars = best.pars, fun = fun, 
+              fixed.pars = fixed.pars, fixed.values = fixed.values,
+              control = controlSolnp, ...)
+      }
+    }, error = function(e) NULL)
+    
+    return(list(DEoptim = de.res, solnp = sol.res))
+  }
+  
+  tmp <- c(0.52,0.95, 2.77,sqrt(var(data[,1])),0.72)
   if(ModelType==1) tmp <- c(tmp,2.10)
   if(ModelType==2) tmp <- c(tmp,-1.5,	0.72,	-0.09,	0.04,	2.10)
   if(LEVIER)       tmp <- c(tmp,1.5,0.87568)
@@ -330,16 +358,47 @@ MDSVfit<-function(N,K,data,ModelType=0,LEVIER=FALSE,start.pars=list(),dis="logno
       opt<-try(solnp(pars=para_tilde,fun=logLik,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis,fixed_pars=fixed.pars,fixed_values=fixed.values,control=ctrl),silent=T)
     }
   }else{
-    if(is.null(fixed.pars)){
-      opt<-try(gosolnp(pars=NULL,fun=function(x) logLik(x,ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis),control=ctrl,
-                       LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim,cluster=cluster),silent=T)
-    }else{
-      opt<-try(gosolnp(pars=NULL,fun=function(x) logLik(ech=data,Model_type=ModelType,K=K,LEVIER=LEVIER,N=N,Nl=70,dis=dis),
-                       fixed.pars=fixed.pars, fixed.values=fixed.values,control=ctrl,
-                       LB=LB,UB=UB,n.restarts=n.restarts,n.sim=n.sim,cluster=cluster),silent=T)
-    }
+    opt <- try(
+      DEsolnp(
+        fun = function(x) logLik(x, ech = data, Model_type = ModelType,
+                                        K = K, LEVIER = LEVIER, N = N, Nl = 70, dis = dis),
+        LB = LB, UB = UB,
+        controlDE = list(NP = 80, itermax = 200, trace = TRUE),
+        controlSolnp = ctrl,
+        fixed.pars = fixed.pars,
+        fixed.values = fixed.values
+      ),
+      silent = TRUE
+    )
   }
   options(warn = oldw)
+  
+  # oldw <- getOption("warn")
+  # options(warn = -1)
+  # 
+  # LB<-c(-9.210240,-9.210240,-4.60517,-4.60517, -9.210240, -4.60517)
+  # UB<-c(4.59512,0,3.891820,5.298317,4.59512,5.298317)
+  # 
+  # LB<-c(-0.57564,-9.210240,-4.60517,-4.60517,-1.15128,-4.60517)#1.115305
+  # UB<-c(1.14878,0,3.891820,5.298317,4.59512,5.298317)
+  # 
+  # LB<-c(-0.57564,-9.210240,-4.60517,-4.60517,0,-4.60517)#1.115305
+  # UB<-c(0,0,3.891820,5.298317,0,5.298317)
+  # 
+  # opt <- try(
+  #   DEsolnp(
+  #     fun = function(x) MDSV:::logLik(x, ech = data, Model_type = ModelType,
+  #                              K = K, LEVIER = LEVIER, N = N, Nl = 70, dis = dis),
+  #     LB = LB, UB = UB,
+  #     controlDE = list(NP = 80, itermax = 200, trace = TRUE),
+  #     controlSolnp = ctrl,
+  #     fixed.pars = fixed.pars,
+  #     fixed.values = fixed.values
+  #   ),
+  #   silent = TRUE
+  # )
+  # 
+  # options(warn = oldw)
   
   if(class(opt) =='try-error'){
     stop("MDSVfit() ERROR: Fail to converge!")

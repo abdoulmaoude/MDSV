@@ -31,6 +31,6 @@ Augustyniak, M., Dufays, A., & Maoude, K.H.A. (2021). Multifractal Discrete Stoc
 For fitting \code{\link{MDSVfit}}, filtering \code{\link{MDSVfilter}}, bootstrap forecasting \code{\link{MDSVboot}} and rolling estimation and forecast \code{\link{MDSVroll}}.
 }
 \author{
-\strong{Maintainer}: Kassimou Abdoul Haki Maoude \email{abdoulhaki.maoude@aiesec.net}
+\strong{Maintainer}: Kassimou Abdoul Haki Maoude \email{abdoul.maoude@gmail.com}
 
 }
